@@ -31,6 +31,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { KPICard } from '../components/KPICard';
 import {
   dashboardKPIS,
@@ -39,6 +40,7 @@ import {
   transactions,
   alerts,
 } from '../data/demoData';
+import { toArabicNumerals } from '../i18n/helpers';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -107,14 +109,21 @@ function getTransactionColor(type: string) {
   }
 }
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr: string, locale: string) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 export function Dashboard() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language || 'ar';
+  const locale = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+  const isAr = lang === 'ar';
+  const fmtNum = (n: number) => (isAr ? toArabicNumerals(n) : n.toLocaleString(locale));
+  const curr = t('currency.symbol');
+
   return (
-    <div dir="rtl" className="space-y-6">
+    <div dir={isAr ? 'rtl' : 'ltr'} className="space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -124,13 +133,13 @@ export function Dashboard() {
       >
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-            <span className="text-gradient">لوحة التحكم</span>
+            <span className="text-gradient">{t('dashboard.title')}</span>
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">نظرة عامة على أداء المتجر والمخزون</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">{t('dashboard.sales_analysis')}</p>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-xs text-[var(--text-muted)] bg-[var(--bg-elevated)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)]">
           <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-          <span>آخر تحديث: {new Date().toLocaleDateString('ar-SA')}</span>
+          <span>{t('dashboard.last_update')}: {formatDate(new Date().toISOString(), locale)}</span>
         </div>
       </motion.div>
 
@@ -143,48 +152,50 @@ export function Dashboard() {
       >
         <motion.div variants={itemVariants}>
           <KPICard
-            title="إجمالي المنتجات"
+            title={t('dashboard.total_products')}
             value={dashboardKPIS.activeProducts.value}
             change={dashboardKPIS.activeProducts.change}
             icon={Package}
             iconColor="text-teal-600"
             iconBgColor="bg-teal-50 dark:bg-teal-950"
             index={0}
+            lang={lang}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
           <KPICard
-            title="إجمالي قيمة المخزون"
+            title={t('dashboard.stock_value')}
             value={dashboardKPIS.totalInventoryValue.value}
             change={dashboardKPIS.totalInventoryValue.change}
             icon={DollarSign}
             iconColor="text-emerald-600"
             iconBgColor="bg-emerald-50 dark:bg-emerald-950"
-            prefix=""
-            suffix=" ر.س"
+            suffix={` ${curr}`}
             index={1}
+            lang={lang}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
           <KPICard
-            title="حركات اليوم"
+            title={t('dashboard.daily_transactions')}
             value={dashboardKPIS.todayTransactions.value}
             change={dashboardKPIS.todayTransactions.change}
             icon={Receipt}
             iconColor="text-blue-600"
             iconBgColor="bg-blue-50 dark:bg-blue-950"
             index={2}
+            lang={lang}
           />
         </motion.div>
         <motion.div variants={itemVariants}>
           <KPICard
-            title="التنبيهات"
+            title={t('dashboard.alerts')}
             value={dashboardKPIS.lowStockItems.value + dashboardKPIS.expiringSoon.value}
-            change={undefined}
             icon={AlertTriangle}
             iconColor="text-amber-600"
             iconBgColor="bg-amber-50 dark:bg-amber-950"
             index={3}
+            lang={lang}
           />
         </motion.div>
       </motion.div>
@@ -207,8 +218,8 @@ export function Dashboard() {
                 <TrendingUp className="w-4 h-4 text-teal-600" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">المبيعات الأسبوعية</h3>
-                <p className="text-xs text-[var(--text-muted)]">تحليل أداء المبيعات خلال الأسبوع</p>
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{t('dashboard.weekly_sales')}</h3>
+                <p className="text-xs text-[var(--text-muted)]">{t('dashboard.sales_analysis')}</p>
               </div>
             </div>
             <div className="badge badge-success">
@@ -236,7 +247,7 @@ export function Dashboard() {
                   tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => `${fmtNum(Math.round(v / 1000))}k`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -246,7 +257,7 @@ export function Dashboard() {
                     color: 'var(--text-primary)',
                     fontSize: 13,
                   }}
-                  formatter={(value: number) => [`${value.toLocaleString('ar-SA')} ر.س`, 'المبيعات']}
+                  formatter={(value: number) => [`${fmtNum(value)} ${curr}`, t('dashboard.sales_chart')]}
                 />
                 <Area
                   type="monotone"
@@ -268,8 +279,8 @@ export function Dashboard() {
               <ShoppingCart className="w-4 h-4 text-purple-600" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-[var(--text-primary)]">توزيع الفئات</h3>
-              <p className="text-xs text-[var(--text-muted)]">نسبة المنتجات حسب الفئة</p>
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">{t('dashboard.category_distribution')}</h3>
+              <p className="text-xs text-[var(--text-muted)]">{t('dashboard.category_dist_desc')}</p>
             </div>
           </div>
 
@@ -318,7 +329,7 @@ export function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-[var(--text-primary)] truncate">{cat.name}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{cat.value}%</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{isAr ? toArabicNumerals(cat.value) : cat.value}%</p>
                   </div>
                 </div>
               );
@@ -342,12 +353,12 @@ export function Dashboard() {
                 <Receipt className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">الحركات الأخيرة</h3>
-                <p className="text-xs text-[var(--text-muted)]">آخر المعاملات المسجلة</p>
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{t('dashboard.recent_transactions')}</h3>
+                <p className="text-xs text-[var(--text-muted)]">{t('dashboard.recent_transactions_desc')}</p>
               </div>
             </div>
             <button className="text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors">
-              عرض الكل
+              {t('dashboard.view_all')}
             </button>
           </div>
 
@@ -369,15 +380,15 @@ export function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--text-primary)] truncate">{trx.id}</p>
                     <p className="text-xs text-[var(--text-muted)]">
-                      {trx.customer || '—'} · {trx.itemCount} صنف
+                      {trx.customer || t('dashboard.customer')} · {isAr ? toArabicNumerals(trx.itemCount) : trx.itemCount} {t('dashboard.piece')}
                     </p>
                   </div>
                   <div className="text-left">
                     <p className={`text-sm font-semibold ${trx.type === 'purchase' || trx.type === 'adjustment' ? 'text-red-500' : 'text-emerald-500'}`}>
                       {trx.type === 'purchase' || trx.type === 'adjustment' ? '-' : '+'}
-                      {trx.amount.toLocaleString('ar-SA')} ر.س
+                      {fmtNum(trx.amount)} {curr}
                     </p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{formatDate(trx.date)}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{formatDate(trx.date, locale)}</p>
                   </div>
                 </motion.div>
               );
@@ -393,12 +404,12 @@ export function Dashboard() {
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)]">التنبيهات</h3>
-                <p className="text-xs text-[var(--text-muted)]">إشعارات المخزون والصلاحية</p>
+                <h3 className="text-base font-semibold text-[var(--text-primary)]">{t('dashboard.alert_list')}</h3>
+                <p className="text-xs text-[var(--text-muted)]">{t('dashboard.stock_alerts')}</p>
               </div>
             </div>
             <span className="badge badge-danger text-[10px]">
-              {alerts.filter((a) => !a.read).length} غير مقروءة
+              {isAr ? toArabicNumerals(alerts.filter((a) => !a.read).length) : alerts.filter((a) => !a.read).length} {t('dashboard.unread_alerts')}
             </span>
           </div>
 
@@ -425,7 +436,7 @@ export function Dashboard() {
                     )}
                   </div>
                   <p className="text-xs opacity-80 mt-0.5 leading-relaxed">{alert.message}</p>
-                  <p className="text-[10px] opacity-60 mt-1">{formatDate(alert.date)}</p>
+                  <p className="text-[10px] opacity-60 mt-1">{formatDate(alert.date, locale)}</p>
                 </div>
               </motion.div>
             ))}

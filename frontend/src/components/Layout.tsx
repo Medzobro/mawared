@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { useAppStore } from '../stores/appStore';
+import { getLanguageDirection } from '../i18n/i18n';
 
 export function Layout() {
   const location = useLocation();
   const { setActiveRoute, sidebarCollapsed } = useAppStore();
+  const dir = getLanguageDirection();
 
   useEffect(() => {
     setActiveRoute(location.pathname);
@@ -16,7 +18,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300"
-      dir="rtl"
+      dir={dir}
     >
       <Sidebar />
       <TopBar />

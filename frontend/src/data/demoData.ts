@@ -165,6 +165,9 @@ export const dashboardKPIS = {
   expiringSoon: { value: 12, change: 0, label: 'تنتهي قريباً' },
 };
 
+export const CURRENCY_SYMBOL = 'MRU';
+export const CURRENCY_LABEL = 'أوقية';
+
 export const weeklySales = [
   { day: 'السبت', sales: 12500, transactions: 38 },
   { day: 'الأحد', sales: 14200, transactions: 45 },

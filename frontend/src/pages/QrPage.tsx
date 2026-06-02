@@ -1,5 +1,14 @@
+/**
+ * MAWARED — QR / Barcode Page
+ * - QR generation via qrcode.toCanvas
+ * - Barcode generation via jsbarcode (+ dynamic import)
+ * - QR scanning via html5-qrcode
+ */
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toCanvas } from 'qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
+import { useTranslation } from 'react-i18next';
 import {
   QrCode,
   ScanLine,
@@ -18,13 +27,9 @@ import {
   Camera,
   CameraOff,
 } from 'lucide-react';
-import QRCodeLib from 'qrcode';
-import { Html5Qrcode } from 'html5-qrcode';
 import { products } from '../data/demoData';
 import type { Product } from '../data/demoData';
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const JsBarcode = require('jsbarcode');
+import { useOutsideClick } from '../hooks/useOutsideClick';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -52,21 +57,11 @@ function isValidForFormat(text: string, format: string): boolean {
   return true;
 }
 
-function useOutsideClick(ref: React.RefObject<HTMLElement>, handler: () => void) {
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) handler();
-    }
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [ref, handler]);
-}
-
 export function QrPage() {
   const [activeTab, setActiveTab] = useState<'generate' | 'scan'>('generate');
 
   return (
-    <div dir="rtl" className="space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -144,15 +139,18 @@ export function QrPage() {
   );
 }
 
+/* ─────────────────────────── GenerateTab ─────────────────────────── */
+
 function GenerateTab() {
   const [search, setSearch] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] ?? null);
   const [comboOpen, setComboOpen] = useState(false);
   const [barcodeFormat, setBarcodeFormat] = useState('CODE128');
-  const [qrUrl, setQrUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const comboRef = useRef<HTMLDivElement>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
+
   useOutsideClick(comboRef, () => setComboOpen(false));
 
   const productList = useMemo(() => {
@@ -165,63 +163,79 @@ function GenerateTab() {
     );
   }, [search]);
 
-  // Generate QR when product changes
+  // Generate QR directly on canvas
   useEffect(() => {
-    if (!selectedProduct) {
-      setQrUrl('');
-      return;
-    }
+    if (!selectedProduct || !qrCanvasRef.current) return;
     const text = selectedProduct.barcode || selectedProduct.sku;
-    QRCodeLib.toDataURL(text, {
+    const canvas = qrCanvasRef.current;
+    // Ensure a clean square size
+    canvas.width = 400;
+    canvas.height = 400;
+    toCanvas(canvas, text, {
       width: 400,
       margin: 2,
-      color: { dark: '#14b8a6', light: '#ffffff00' },
-    })
-      .then((url) => setQrUrl(url))
-      .catch(() => setQrUrl(''));
+      color: { dark: '#14b8a6', light: '#ffffff' },
+    }).catch(() => {});
   }, [selectedProduct]);
 
-  // Generate barcode when product or format changes
+  // Generate barcode using jsbarcode (dynamic import to keep initial bundle light)
   useEffect(() => {
     if (!selectedProduct || !barcodeCanvasRef.current) return;
     const text = selectedProduct.barcode || selectedProduct.sku;
-    try {
-      (JsBarcode as any)(barcodeCanvasRef.current, text, {
-        format: barcodeFormat,
-        width: 2,
-        height: 80,
-        displayValue: true,
-        fontSize: 16,
-        lineColor: '#14b8a6',
-        background: 'transparent',
-        margin: 10,
-      });
-    } catch {
-      // fallback to CODE128 if selected format fails
-      if (barcodeFormat !== 'CODE128') {
-        try {
-          (JsBarcode as any)(barcodeCanvasRef.current, text, {
-            format: 'CODE128',
-            width: 2,
-            height: 80,
-            displayValue: true,
-            fontSize: 16,
-            lineColor: '#14b8a6',
-            background: 'transparent',
-            margin: 10,
-          });
-        } catch {
-          // ignore
+    const canvas = barcodeCanvasRef.current;
+    let cancelled = false;
+
+    const render = async () => {
+      try {
+        const mod: any = await import('jsbarcode');
+        const JsBarcode = mod.default || mod;
+        if (cancelled) return;
+        JsBarcode(canvas, text, {
+          format: barcodeFormat,
+          width: 2,
+          height: 80,
+          displayValue: true,
+          fontSize: 16,
+          lineColor: '#14b8a6',
+          background: 'transparent',
+          margin: 10,
+        });
+      } catch {
+        if (!cancelled && barcodeFormat !== 'CODE128') {
+          try {
+            const mod: any = await import('jsbarcode');
+            const JsBarcode = mod.default || mod;
+            JsBarcode(canvas, text, {
+              format: 'CODE128',
+              width: 2,
+              height: 80,
+              displayValue: true,
+              fontSize: 16,
+              lineColor: '#14b8a6',
+              background: 'transparent',
+              margin: 10,
+            });
+          } catch {
+            // ignore
+          }
         }
       }
-    }
+    };
+
+    render();
+    return () => { cancelled = true; };
   }, [selectedProduct, barcodeFormat]);
 
   const handlePrint = useCallback(
-    (type: 'qr' | 'barcode') => {
+    async (type: 'qr' | 'barcode') => {
       const win = window.open('', '_blank');
       if (!win) return;
-      const img = type === 'qr' ? qrUrl : barcodeCanvasRef.current?.toDataURL();
+      let img = '';
+      if (type === 'qr' && qrCanvasRef.current) {
+        img = qrCanvasRef.current.toDataURL('image/png');
+      } else if (type === 'barcode' && barcodeCanvasRef.current) {
+        img = barcodeCanvasRef.current.toDataURL('image/png');
+      }
       const title = type === 'qr' ? 'QR Code' : 'Barcode';
       win.document.write(`
         <html dir="rtl">
@@ -234,24 +248,26 @@ function GenerateTab() {
       win.document.close();
       setTimeout(() => win.print(), 300);
     },
-    [qrUrl]
+    []
   );
 
   const handleDownload = useCallback(
     (type: 'qr' | 'barcode') => {
       const link = document.createElement('a');
-      if (type === 'qr') {
-        link.href = qrUrl;
-        link.download = `${selectedProduct?.sku || 'qr'}.png`;
+      if (type === 'qr' && qrCanvasRef.current) {
+        link.href = qrCanvasRef.current.toDataURL('image/png');
+        link.download = `${selectedProduct?.sku || 'qr'}_QR.png`;
+      } else if (type === 'barcode' && barcodeCanvasRef.current) {
+        link.href = barcodeCanvasRef.current.toDataURL('image/png');
+        link.download = `${selectedProduct?.sku || 'barcode'}_BC.png`;
       } else {
-        link.href = barcodeCanvasRef.current?.toDataURL() || '';
-        link.download = `${selectedProduct?.sku || 'barcode'}.png`;
+        return;
       }
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     },
-    [qrUrl, selectedProduct]
+    [selectedProduct]
   );
 
   const barcodeValid = selectedProduct
@@ -378,7 +394,7 @@ function GenerateTab() {
                     {selectedProduct.name}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    {selectedProduct.category} · {selectedProduct.price} ر.س
+                    {selectedProduct.category} · {selectedProduct.price.toFixed(2)} MRU
                   </p>
                 </div>
                 <span
@@ -456,7 +472,7 @@ function GenerateTab() {
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>
-                الباركود غير متوافق مع {barcodeFormats.find((f) => f.value === barcodeFormat)?.label}، جارٍ العودة إلى Code128.
+                الباركود غير متوافق مع {barcodeFormats.find((f) => f.value === barcodeFormat)?.label}، جارٍ الانتقال إلى Code128.
               </span>
             </motion.div>
           )}
@@ -490,6 +506,7 @@ function GenerateTab() {
             </div>
           </div>
           <div className="flex items-center justify-center p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
+            {/* Using a fixed size canvas ref directly */}
             <canvas ref={barcodeCanvasRef} className="max-w-full" />
           </div>
         </div>
@@ -498,47 +515,42 @@ function GenerateTab() {
       {/* QR Preview Column */}
       <motion.div variants={itemVariants}>
         <div className="card-glass card-glow rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center min-h-[420px]">
-          <AnimatePresence mode="wait">
-            {qrUrl ? (
+          {selectedProduct ? (
+            <motion.div
+              key={selectedProduct.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="flex flex-col items-center"
+            >
               <motion.div
-                key={selectedProduct?.id || 'qr'}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                className="flex flex-col items-center"
+                whileHover={{ scale: 1.03 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="relative p-6 rounded-2xl bg-white border-4 border-dashed border-[var(--border-medium)]"
               >
-                <motion.div
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="relative p-6 rounded-2xl bg-white border-4 border-dashed border-[var(--border-medium)]"
-                >
-                  <img
-                    src={qrUrl}
-                    alt="QR Code"
-                    className="w-64 h-64 sm:w-72 sm:h-72 object-contain"
-                  />
-                </motion.div>
-                <p className="mt-4 text-lg font-bold text-[var(--text-primary)] text-center">
-                  {selectedProduct?.name}
-                </p>
-                <p className="text-sm text-[var(--text-muted)] text-center mt-1">
-                  {selectedProduct?.barcode || selectedProduct?.sku}
-                </p>
+                <canvas
+                  ref={qrCanvasRef}
+                  width={400}
+                  height={400}
+                  className="w-64 h-64 sm:w-72 sm:h-72 object-contain"
+                />
               </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center text-[var(--text-muted)]"
-              >
-                <QrCode className="w-16 h-16 mb-3 opacity-20" />
-                <p className="text-sm">اختر منتجاً لعرض QR code</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              <p className="mt-4 text-lg font-bold text-[var(--text-primary)] text-center">
+                {selectedProduct.name}
+              </p>
+              <p className="text-sm text-[var(--text-muted)] text-center mt-1">
+                {selectedProduct.barcode || selectedProduct.sku}
+              </p>
+            </motion.div>
+          ) : (
+            <div className="flex flex-col items-center text-[var(--text-muted)]">
+              <QrCode className="w-16 h-16 mb-3 opacity-20" />
+              <p className="text-sm">اختر منتجاً لعرض QR code</p>
+            </div>
+          )}
 
-          {qrUrl && (
+          {selectedProduct && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -570,6 +582,8 @@ function GenerateTab() {
     </motion.div>
   );
 }
+
+/* ─────────────────────────── ScanTab ─────────────────────────── */
 
 function ScanTab() {
   const [scanning, setScanning] = useState(false);
@@ -819,17 +833,13 @@ function ScanTab() {
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
-                          <p className="text-[11px] text-[var(--text-muted)]">
-                            السعر
-                          </p>
+                          <p className="text-[11px] text-[var(--text-muted)]">السعر</p>
                           <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5">
-                            {matchedProduct.price.toFixed(2)} ر.س
+                            {matchedProduct.price.toFixed(2)} MRU
                           </p>
                         </div>
                         <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
-                          <p className="text-[11px] text-[var(--text-muted)]">
-                            المخزون
-                          </p>
+                          <p className="text-[11px] text-[var(--text-muted)]">المخزون</p>
                           <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5">
                             {matchedProduct.stock} {matchedProduct.unit}
                           </p>

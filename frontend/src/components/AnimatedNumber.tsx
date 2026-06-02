@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSpring, useInView, motion } from 'framer-motion';
+import { toArabicNumerals } from '../i18n/helpers';
 
 interface AnimatedNumberProps {
   value: number;
@@ -10,6 +11,7 @@ interface AnimatedNumberProps {
   decimals?: number;
   className?: string;
   separator?: string;
+  lang?: string;
 }
 
 export function AnimatedNumber({
@@ -21,6 +23,7 @@ export function AnimatedNumber({
   decimals = 0,
   className = '',
   separator = ',',
+  lang,
 }: AnimatedNumberProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
@@ -47,10 +50,14 @@ export function AnimatedNumber({
     return () => unsubscribe();
   }, [spring, decimals]);
 
+  const isArabic = lang === 'ar';
+
   const formatted =
     decimals > 0
       ? displayValue.toFixed(decimals)
-      : Math.floor(displayValue).toLocaleString('ar-SA');
+      : Math.floor(displayValue).toLocaleString(isArabic ? 'ar-SA' : undefined);
+
+  const rendered = isArabic ? toArabicNumerals(formatted) : formatted;
 
   return (
     <motion.span
@@ -61,7 +68,7 @@ export function AnimatedNumber({
       transition={{ duration: 0.5, delay }}
     >
       {prefix}
-      {formatted}
+      {rendered}
       {suffix}
     </motion.span>
   );

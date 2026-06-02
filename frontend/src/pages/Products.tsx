@@ -20,7 +20,9 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { products, categories } from '../data/demoData';
+import { toArabicNumerals } from '../i18n/helpers';
 import type { Product } from '../data/demoData';
 
 const containerVariants = {
@@ -38,12 +40,12 @@ const itemVariants = {
 
 const statusConfig: Record<
   Product['status'],
-  { label: string; badge: string; color: string }
+  { labelKey: string; badge: string; color: string }
 > = {
-  active: { label: 'نشط', badge: 'badge-success', color: '#22c55e' },
-  low_stock: { label: 'منخفض', badge: 'badge-warning', color: '#f59e0b' },
-  out_of_stock: { label: 'نفد', badge: 'badge-danger', color: '#ef4444' },
-  expired: { label: 'منتهي', badge: 'badge-danger', color: '#ef4444' },
+  active: { labelKey: 'active', badge: 'badge-success', color: '#22c55e' },
+  low_stock: { labelKey: 'low_stock', badge: 'badge-warning', color: '#f59e0b' },
+  out_of_stock: { labelKey: 'out_of_stock', badge: 'badge-danger', color: '#ef4444' },
+  expired: { labelKey: 'expired', badge: 'badge-danger', color: '#ef4444' },
 };
 
 const categoryIconMap: Record<string, React.ElementType> = {
@@ -63,6 +65,12 @@ function getCategoryIcon(name: string) {
 }
 
 export function Products() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language || 'ar';
+  const isAr = lang === 'ar';
+  const fmt = (n: number) => (isAr ? toArabicNumerals(n) : n.toString());
+  const curr = t('currency.symbol');
+
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -130,7 +138,7 @@ export function Products() {
   };
 
   return (
-    <div dir="rtl" className="space-y-6">
+    <div dir={isAr ? 'rtl' : 'ltr'} className="space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -140,10 +148,10 @@ export function Products() {
       >
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-            <span className="text-gradient">المنتجات</span>
+            <span className="text-gradient">{t('products.title')}</span>
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">
-            إدارة المنتجات، المخزون، والباركود
+            {t('products.product_desc')}
           </p>
         </div>
 
@@ -180,7 +188,7 @@ export function Products() {
                     onBlur={() => {
                       if (!search.trim()) setSearchOpen(false);
                     }}
-                    placeholder="بحث في المنتجات..."
+                    placeholder={t('products.search_placeholder')}
                     className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] pr-2"
                   />
                   {search && (
@@ -206,12 +214,12 @@ export function Products() {
           <div className="relative group">
             <button className="h-11 px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
               <Filter className="w-4.5 h-4.5" />
-              <span className="hidden sm:inline">تصفية</span>
+              <span className="hidden sm:inline">{t('products.filter')}</span>
             </button>
             <div className="absolute top-12 left-0 w-56 bg-[var(--bg-card)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-2xl shadow-2xl shadow-black/10 p-4 space-y-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40">
               <div>
                 <label className="block text-xs font-medium text-[var(--text-muted)] mb-2">
-                  الفئة
+                  {t('products.filter_by_category')}
                 </label>
                 <select
                   value={selectedCategory}
@@ -221,7 +229,7 @@ export function Products() {
                   }}
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] outline-none focus:border-teal-500"
                 >
-                  <option value="all">الكل</option>
+                  <option value="all">{t('products.all')}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.name}>
                       {c.name}
@@ -231,7 +239,7 @@ export function Products() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--text-muted)] mb-2">
-                  الحالة
+                  {t('products.filter_by_status')}
                 </label>
                 <select
                   value={selectedStatus}
@@ -241,11 +249,11 @@ export function Products() {
                   }}
                   className="w-full px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] outline-none focus:border-teal-500"
                 >
-                  <option value="all">الكل</option>
-                  <option value="active">نشط</option>
-                  <option value="low_stock">مخزون منخفض</option>
-                  <option value="out_of_stock">نفد المخزون</option>
-                  <option value="expired">منتهي الصلاحية</option>
+                  <option value="all">{t('products.all')}</option>
+                  <option value="active">{t('status.active')}</option>
+                  <option value="low_stock">{t('status.low_stock')}</option>
+                  <option value="out_of_stock">{t('status.out_of_stock')}</option>
+                  <option value="expired">{t('status.expired')}</option>
                 </select>
               </div>
             </div>
@@ -259,7 +267,7 @@ export function Products() {
             className="btn-premium text-sm gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">إضافة منتج</span>
+            <span className="hidden sm:inline">{t('products.add_product')}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -280,18 +288,18 @@ export function Products() {
                     onClick={() => handleSort('name')}
                     className="inline-flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
                   >
-                    المنتج
+                    {t('products.name')}
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">SKU</th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">الفئة</th>
+                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">{t('products.sku')}</th>
+                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">{t('products.category')}</th>
                 <th className="px-5 py-4 text-right font-medium whitespace-nowrap">
                   <button
                     onClick={() => handleSort('stock')}
                     className="inline-flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
                   >
-                    المخزون
+                    {t('products.stock')}
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
@@ -300,12 +308,12 @@ export function Products() {
                     onClick={() => handleSort('price')}
                     className="inline-flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
                   >
-                    السعر
+                    {t('products.price')}
                     <ArrowUpDown className="w-3 h-3" />
                   </button>
                 </th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">الحالة</th>
-                <th className="px-5 py-4 text-center font-medium whitespace-nowrap">إجراءات</th>
+                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">{t('products.status')}</th>
+                <th className="px-5 py-4 text-center font-medium whitespace-nowrap">{t('products.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -319,7 +327,7 @@ export function Products() {
                   >
                     <td colSpan={7} className="px-5 py-16 text-center text-[var(--text-muted)]">
                       <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p>لا توجد منتجات مطابقة</p>
+                      <p>{t('products.no_products')}</p>
                     </td>
                   </motion.tr>
                 ) : (
@@ -354,7 +362,7 @@ export function Products() {
                               </p>
                               {product.prescription && (
                                 <span className="text-[10px] text-amber-500 font-medium">
-                                      يتطلب وصفة
+                                      {t('products.prescription_required')}
                                     </span>
                               )}
                             </div>
@@ -375,7 +383,7 @@ export function Products() {
                         <td className="px-5 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <span className={`font-semibold text-sm ${stockColor}`}>
-                              {product.stock}
+                              {fmt(product.stock)}
                             </span>
                             <span className="text-xs text-[var(--text-muted)]">
                               {product.unit}
@@ -386,10 +394,10 @@ export function Products() {
                           </div>
                         </td>
                         <td className="px-5 py-4 text-[var(--text-primary)] font-semibold whitespace-nowrap">
-                          {product.price.toFixed(2)} ر.س
+                          {product.price.toFixed(2)} {curr}
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap">
-                          <span className={`badge ${status.badge}`}>{status.label}</span>
+                          <span className={`badge ${status.badge}`}>{t(`status.${status.labelKey}`)}</span>
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
@@ -399,7 +407,7 @@ export function Products() {
                               onClick={() =>
                                 (window.location.hash = `/qr?product=${product.id}`)
                               }
-                              title="عرض QR / الباركود"
+                              title={t('products.qr_barcode_view')}
                               className="w-9 h-9 rounded-lg flex items-center justify-center bg-teal-50 dark:bg-teal-950 text-teal-600 hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors"
                             >
                               <QrCode className="w-4 h-4" />
@@ -418,7 +426,7 @@ export function Products() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border-subtle)]">
           <p className="text-xs text-[var(--text-muted)]">
-            عرض {pageItems.length} من {filtered.length} منتج
+            {t('products.showing_x_of_y', { count: fmtNum(pageItems.length), total: fmtNum(filtered.length) })}
           </p>
           <div className="flex items-center gap-2">
             <motion.button
@@ -443,7 +451,7 @@ export function Products() {
                       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
                   }`}
                 >
-                  {page}
+                  {fmt(page)}
                 </motion.button>
               ))}
             </div>
@@ -480,7 +488,7 @@ export function Products() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                  إضافة منتج جديد
+                  {t('products.add_new_product')}
                 </h2>
                 <button
                   onClick={() => setShowAddModal(false)}
@@ -492,28 +500,28 @@ export function Products() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                    اسم المنتج
+                    {t('products.product_name')}
                   </label>
                   <input
                     type="text"
-                    placeholder="أدخل اسم المنتج"
+                    placeholder={t('products.enter_product_name')}
                     className="input-premium"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                      SKU
+                      {t('products.sku')}
                     </label>
                     <input
                       type="text"
-                      placeholder="رمز المنتج"
+                      placeholder={t('products.product_sku')}
                       className="input-premium"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                      السعر
+                      {t('products.price')}
                     </label>
                     <input
                       type="number"
@@ -524,10 +532,10 @@ export function Products() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                    الفئة
+                    {t('products.category')}
                   </label>
                   <select className="input-premium">
-                    <option>اختر الفئة...</option>
+                    <option>{t('products.select_category')}</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.name}>
                         {c.name}
@@ -541,7 +549,7 @@ export function Products() {
                     className="btn-premium w-full gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    إضافة المنتج
+                    {t('products.add_product')}
                   </button>
                 </div>
               </div>
@@ -551,4 +559,8 @@ export function Products() {
       </AnimatePresence>
     </div>
   );
+}
+
+function fmtNum(n: number): string {
+  return n.toLocaleString('ar-SA');
 }

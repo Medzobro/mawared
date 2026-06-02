@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type AppMode = 'shop' | 'pharmacy';
 export type Theme = 'light' | 'dark' | 'system';
+export type Language = 'ar' | 'en' | 'fr';
 
 export interface Notification {
   id: string;
@@ -13,13 +14,24 @@ export interface Notification {
   timestamp: Date;
 }
 
+export interface User {
+  username: string;
+  name?: string;
+  role?: string;
+}
+
 interface AppState {
   mode: AppMode;
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
   theme: Theme;
+  language: Language;
   notifications: Notification[];
   activeRoute: string;
+
+  // Auth
+  isAuthenticated: boolean;
+  user: User | null;
 
   setMode: (mode: AppMode) => void;
   toggleMode: () => void;
@@ -27,7 +39,12 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   toggleSidebarCollapse: () => void;
   setTheme: (theme: Theme) => void;
+  setLanguage: (lang: Language) => void;
   setActiveRoute: (route: string) => void;
+
+  // Auth actions
+  login: (username: string) => void;
+  logout: () => void;
 
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
@@ -41,11 +58,16 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       mode: 'shop',
-      sidebarOpen: true,
+      sidebarOpen: false,
       sidebarCollapsed: false,
       theme: 'system',
+      language: 'ar',
       notifications: [],
       activeRoute: '/dashboard',
+
+      // Auth defaults
+      isAuthenticated: false,
+      user: null,
 
       setMode: (mode) => {
         set({ mode });
@@ -69,7 +91,23 @@ export const useAppStore = create<AppState>()(
           else root.classList.remove('dark');
         }
       },
+      setLanguage: (lang) => {
+        set({ language: lang });
+        const root = document.documentElement;
+        if (lang === 'ar') { root.setAttribute('dir', 'rtl'); root.setAttribute('lang', 'ar'); }
+        else { root.setAttribute('dir', 'ltr'); root.setAttribute('lang', lang); }
+      },
       setActiveRoute: (route) => set({ activeRoute: route }),
+
+      // Auth actions
+      login: (username) => {
+        const user: User = { username, name: username };
+        set({ isAuthenticated: true, user });
+      },
+      logout: () => {
+        set({ isAuthenticated: false, user: null, mode: 'shop', activeRoute: '/dashboard' });
+        document.documentElement.setAttribute('data-mode', 'shop');
+      },
 
       addNotification: (notification) => {
         const newNotification: Notification = {
@@ -102,7 +140,13 @@ export const useAppStore = create<AppState>()(
         sidebarOpen: state.sidebarOpen,
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
+        language: state.language,
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
       }),
     }
   )
 );
+
+// Initialize theme on load
+useAppStore.getState().setTheme(useAppStore.getState().theme);

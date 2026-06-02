@@ -13,6 +13,7 @@ interface KPICardProps {
   suffix?: string;
   decimals?: number;
   index?: number;
+  lang?: string;
 }
 
 export function KPICard({
@@ -26,6 +27,7 @@ export function KPICard({
   suffix = '',
   decimals = 0,
   index = 0,
+  lang,
 }: KPICardProps) {
   const isPositive = change !== undefined && change > 0;
   const isNegative = change !== undefined && change < 0;
@@ -70,6 +72,7 @@ export function KPICard({
               decimals={decimals}
               className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]"
               delay={index * 0.1}
+              lang={lang}
             />
           </div>
 
@@ -85,7 +88,6 @@ export function KPICard({
                 {isPositive ? '+' : ''}
                 {change.toFixed(1)}%
               </span>
-              <span className="opacity-60 font-normal mr-1">من الأسبوع الماضي</span>
             </motion.div>
           )}
         </div>
