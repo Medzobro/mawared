@@ -8,10 +8,7 @@ import {
   X,
   Sun,
   Moon,
-  ShoppingBag,
-  Pill,
   Check,
-  Trash2,
   LogOut,
   User,
   ChevronLeft,
@@ -24,17 +21,16 @@ export function TopBar() {
   const navigate = useNavigate();
   const {
     mode,
-    toggleMode,
     theme,
     setTheme,
+    sidebarCollapsed,
+    toggleSidebar,
+    sidebarOpen,
     notifications,
     unreadCount,
     markNotificationAsRead,
     markAllNotificationsAsRead,
     removeNotification,
-    toggleSidebar,
-    sidebarOpen,
-    sidebarCollapsed,
     logout,
   } = useAppStore();
 
@@ -58,67 +54,40 @@ export function TopBar() {
   }, []);
 
   const unread = unreadCount();
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const lang = i18n.language || 'ar';
   const locale = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
 
-  const getNotifIcon = useCallback(
-    (type: string) => {
-      switch (type) {
-        case 'success':
-          return (
-            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
-              <Check className="w-4 h-4 text-emerald-500" />
-            </div>
-          );
-        case 'warning':
-          return (
-            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center">
-              <Bell className="w-4 h-4 text-amber-500" />
-            </div>
-          );
-        case 'error':
-          return (
-            <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
-              <Trash2 className="w-4 h-4 text-red-500" />
-            </div>
-          );
-        default:
-          return (
-            <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-950/40 flex items-center justify-center">
-              <Bell className="w-4 h-4 text-teal-500" />
-            </div>
-          );
-      }
-    },
-    []
-  );
+  const getNotifIcon = useCallback((type: string) => {
+    const cls = (bg: string, text: string) => (
+      <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center`}>
+        <Check className={`w-4 h-4 ${text}`} />
+      </div>
+    );
+    switch (type) {
+      case 'success': return cls('bg-emerald-50 dark:bg-emerald-950/40', 'text-emerald-500');
+      case 'warning': return cls('bg-amber-50 dark:bg-amber-950/40', 'text-amber-500');
+      case 'error': return cls('bg-red-50 dark:bg-red-950/40', 'text-red-500');
+      default: return cls('bg-teal-50 dark:bg-teal-950/40', 'text-teal-500');
+    }
+  }, []);
 
-  const modeLabel =
-    lang === 'ar'
-      ? mode === 'shop'
-        ? 'المحل'
-        : 'الصيدلي'
-      : lang === 'fr'
-      ? mode === 'shop'
-        ? 'Magasin'
-        : 'Pharmacie'
-      : mode === 'shop'
-      ? 'Shop'
-      : 'Pharmacy';
+  const modeLabel = lang === 'ar'
+    ? (mode === 'shop' ? 'المحل' : 'صيدلية')
+    : lang === 'fr'
+    ? (mode === 'shop' ? 'Magasin' : 'Pharmacie')
+    : (mode === 'shop' ? 'Shop' : 'Pharmacy');
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 h-16 z-30 bg-[var(--bg-primary)]/70 backdrop-blur-xl border-b border-[var(--border-subtle)] transition-[padding] duration-300 ease-out ${
         sidebarCollapsed ? 'lg:pr-[80px]' : 'lg:pr-[260px]'
       }`}
+      dir="rtl"
     >
       <div className="h-full flex items-center justify-between px-4 lg:px-6">
+        {/* Left side */}
         <div className="flex items-center gap-3">
-          {/* Mobile hamburger / close sidebar */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -129,164 +98,88 @@ export function TopBar() {
           </motion.button>
 
           <div ref={searchRef} className="relative">
-            <motion.div
-              animate={{ width: searchOpen ? 280 : 44 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-              className="h-11 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center overflow-hidden"
+            <div
+              className={`h-11 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center overflow-hidden transition-all duration-300 ${
+                searchOpen ? 'w-[240px] sm:w-[280px]' : 'w-11'
+              }`}
             >
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => {
-                  setSearchOpen(true);
-                  setTimeout(() => document.getElementById('global-search')?.focus(), 100);
-                }}
+              <button
+                onClick={() => { setSearchOpen(true); setTimeout(() => document.getElementById('global-search')?.focus(), 100); }}
                 className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[var(--text-muted)]"
               >
                 <Search className="w-5 h-5" />
-              </motion.button>
+              </button>
 
-              <AnimatePresence>
-                {searchOpen && (
-                  <>
-                    <motion.input
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      id="global-search"
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={t('topbar.search')}
-                      className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] pr-2"
-                    />
-                    {searchQuery && (
-                      <motion.button
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        onClick={() => setSearchQuery('')}
-                        className="w-8 h-8 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                      >
-                        <X className="w-4 h-4" />
-                      </motion.button>
-                    )}
-                  </>
-                )}
-              </AnimatePresence>
-            </motion.div>
+              {searchOpen && (
+                <input
+                  id="global-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t('topbar.search')}
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] pr-2"
+                >
+                </input>
+              )}
+              {searchOpen && searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="w-8 h-8 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Right side */}
         <div className="flex items-center gap-2">
-          {/* Mode indicator label + toggle */}
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline text-[var(--text-secondary)] text-xs font-medium px-2 py-1 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
-              {modeLabel}
-            </span>
+          {/* Mode badge */}
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${mode === 'pharmacy' ? 'bg-blue-500' : 'bg-teal-500'}`} />
+            {modeLabel}
+          </span>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleMode}
-              className="relative h-9 px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)]"
-            >
-              <span className={`relative z-10 flex items-center gap-1.5 ${
-                mode === 'shop' ? 'text-teal-600 dark:text-teal-400' : ''
-              }`}>
-                <ShoppingBag className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {lang === 'ar' ? 'متجر' : lang === 'fr' ? 'Magasin' : 'Shop'}
-                </span>
-              </span>
-              <span className="text-[var(--border-medium)]">|</span>
-              <span className={`relative z-10 flex items-center gap-1.5 ${
-                mode === 'pharmacy' ? 'text-teal-600 dark:text-teal-400' : ''
-              }`}>
-                <Pill className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {lang === 'ar' ? 'صيدلي' : lang === 'fr' ? 'Pharmacie' : 'Pharmacy'}
-                </span>
-              </span>
-            </motion.button>
-          </div>
-
-          {/* Theme toggle */}
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 15 }}
-            whileTap={{ scale: 0.9 }}
+          {/* Theme */}
+          <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors"
           >
-            <AnimatePresence mode="wait">
-              {isDark ? (
-                <motion.div
-                  key="moon"
-                  initial={{ rotate: -45, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: 45, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Moon className="w-5 h-5" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="sun"
-                  initial={{ rotate: 45, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: -45, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Sun className="w-5 h-5" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
+            {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
 
           {/* Notifications */}
           <div ref={notifRef} className="relative">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={() => setNotifOpen((s) => !s)}
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors"
+              className="relative w-10 h-10 rounded-xl flex items-center justify-center hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4" />
               {unread > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[var(--bg-primary)]"
-                >
+                <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
                   {unread}
-                </motion.span>
+                </span>
               )}
-            </motion.button>
+            </button>
 
             <AnimatePresence>
               {notifOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  className="absolute left-0 top-14 w-80 sm:w-96 bg-[var(--bg-card)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-2xl shadow-2xl shadow-black/10 overflow-hidden max-h-[80vh]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute left-0 top-12 w-80 sm:w-96 bg-[var(--bg-card)] backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden max-h-[80vh]"
                 >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-subtle)]">
-                    <span className="text-sm font-semibold text-[var(--text-primary)]">
-                      {t('topbar.notifications')}
-                    </span>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                    <span className="text-sm font-semibold">{t('topbar.notifications')}</span>
+                    <button
                       onClick={markAllNotificationsAsRead}
-                      className="text-xs text-teal-600 dark:text-teal-400 hover:underline px-2 py-1 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                      className="text-xs text-[var(--accent)] hover:underline"
                     >
-                      تعليم الكل كمقروء
-                    </motion.button>
+                      تعليم الكل
+                    </button>
                   </div>
-
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-10 text-[var(--text-muted)]">
@@ -295,45 +188,28 @@ export function TopBar() {
                       </div>
                     ) : (
                       notifications.map((notif, i) => (
-                        <motion.div
+                        <div
                           key={notif.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
                           className={`flex items-start gap-3 px-4 py-3 hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer border-b border-[var(--border-subtle)] last:border-b-0 ${
-                            !notif.read
-                              ? 'bg-teal-50/30 dark:bg-teal-950/10'
-                              : ''
+                            !notif.read ? 'bg-teal-50/30 dark:bg-teal-950/10' : ''
                           }`}
                           onClick={() => markNotificationAsRead(notif.id)}
                         >
                           {getNotifIcon(notif.type)}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[var(--text-primary)] truncate">
-                              {notif.title}
-                            </p>
-                            <p className="text-xs text-[var(--text-secondary)] mt-0.5 line-clamp-2">
-                              {notif.message}
-                            </p>
+                            <p className="text-sm font-medium truncate">{notif.title}</p>
+                            <p className="text-xs text-[var(--text-secondary)] mt-0.5 line-clamp-2">{notif.message}</p>
                             <p className="text-[11px] text-[var(--text-muted)] mt-1">
-                              {new Date(notif.timestamp).toLocaleTimeString(locale, {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                              {new Date(notif.timestamp).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
-                          <motion.button
-                            whileHover={{ scale: 1.2 }}
-                            whileTap={{ scale: 0.8 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeNotification(notif.id);
-                            }}
-                            className="text-[var(--text-muted)] hover:text-red-500 transition-colors mt-1"
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeNotification(notif.id); }}
+                            className="text-[var(--text-muted)] hover:text-red-500 mt-1"
                           >
                             <X className="w-3.5 h-3.5" />
-                          </motion.button>
-                        </motion.div>
+                          </button>
+                        </div>
                       ))
                     )}
                   </div>
@@ -344,54 +220,38 @@ export function TopBar() {
 
           {/* Profile */}
           <div ref={profileRef} className="relative">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={() => setProfileOpen((s) => !s)}
               className="flex items-center gap-2 pl-2 pr-1 h-10 rounded-xl hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white text-xs font-bold">
+              <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white text-xs font-bold">
                 مـ
               </div>
-              <span className="hidden md:inline text-sm font-medium text-[var(--text-primary)]">
-                مدير النظام
-              </span>
               <ChevronLeft className="hidden md:inline w-4 h-4 text-[var(--text-muted)]" />
-            </motion.button>
+            </button>
 
             <AnimatePresence>
               {profileOpen && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  className="absolute left-0 top-14 w-56 bg-[var(--bg-card)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-2xl shadow-2xl shadow-black/10 overflow-hidden"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute left-0 top-12 w-56 bg-[var(--bg-card)] backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden"
                 >
                   <div className="p-4 border-b border-[var(--border-subtle)]">
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">
-                      مدير النظام
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)]">
-                      admin@mawared.app
-                    </p>
+                    <p className="text-sm font-semibold">{t('topbar.profile')}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{modeLabel}</p>
                   </div>
                   <div className="p-2">
                     <button
-                      onClick={() => {
-                        navigate('/settings');
-                        setProfileOpen(false);
-                      }}
+                      onClick={() => { navigate('/settings'); setProfileOpen(false); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors"
                     >
                       <User className="w-4 h-4" />
                       {t('topbar.profile')}
                     </button>
                     <button
-                      onClick={() => {
-                        logout();
-                        setProfileOpen(false);
-                      }}
+                      onClick={() => { logout(); setProfileOpen(false); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />

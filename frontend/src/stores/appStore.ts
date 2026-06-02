@@ -29,21 +29,18 @@ interface AppState {
   notifications: Notification[];
   activeRoute: string;
 
-  // Auth
   isAuthenticated: boolean;
   user: User | null;
 
   setMode: (mode: AppMode) => void;
-  toggleMode: () => void;
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  toggleSidebarCollapse: () => void;
   setTheme: (theme: Theme) => void;
   setLanguage: (lang: Language) => void;
   setActiveRoute: (route: string) => void;
+  toggleSidebar: () => void;
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebarCollapse: () => void;
 
-  // Auth actions
-  login: (username: string) => void;
+  login: (username: string, accountType?: AppMode) => void;
   logout: () => void;
 
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
@@ -64,8 +61,6 @@ export const useAppStore = create<AppState>()(
       language: 'ar',
       notifications: [],
       activeRoute: '/dashboard',
-
-      // Auth defaults
       isAuthenticated: false,
       user: null,
 
@@ -73,14 +68,6 @@ export const useAppStore = create<AppState>()(
         set({ mode });
         document.documentElement.setAttribute('data-mode', mode);
       },
-      toggleMode: () => {
-        const newMode = get().mode === 'shop' ? 'pharmacy' : 'shop';
-        set({ mode: newMode });
-        document.documentElement.setAttribute('data-mode', newMode);
-      },
-      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-      setSidebarOpen: (open) => set({ sidebarOpen: open }),
-      toggleSidebarCollapse: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setTheme: (theme) => {
         set({ theme });
         const root = document.documentElement;
@@ -99,10 +86,15 @@ export const useAppStore = create<AppState>()(
       },
       setActiveRoute: (route) => set({ activeRoute: route }),
 
-      // Auth actions
-      login: (username) => {
+      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      toggleSidebarCollapse: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      login: (username, accountType) => {
+        const mode = accountType || 'shop';
         const user: User = { username, name: username };
-        set({ isAuthenticated: true, user });
+        set({ isAuthenticated: true, user, mode });
+        document.documentElement.setAttribute('data-mode', mode);
       },
       logout: () => {
         set({ isAuthenticated: false, user: null, mode: 'shop', activeRoute: '/dashboard' });
@@ -148,5 +140,4 @@ export const useAppStore = create<AppState>()(
   )
 );
 
-// Initialize theme on load
 useAppStore.getState().setTheme(useAppStore.getState().theme);
