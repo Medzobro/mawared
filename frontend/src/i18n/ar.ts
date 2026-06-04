@@ -257,6 +257,7 @@ export const ar: { translation: Translations } = {
       status: 'الحالة',
       active: 'نشط',
       inactive: 'غير نشط',
+      reset: 'إعادة تعيين',
     },
     status: {
       active: 'نشط',

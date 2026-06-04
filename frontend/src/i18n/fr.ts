@@ -254,9 +254,10 @@ export const fr: { translation: Translations } = {
       details: 'Détails',
       view: 'Voir',
       actions: 'Actions',
-      status: 'Statut',
+      status: 'État',
       active: 'Actif',
       inactive: 'Inactif',
+      reset: 'Réinitialiser',
     },
     status: {
       active: 'Actif',

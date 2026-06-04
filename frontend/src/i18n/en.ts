@@ -257,6 +257,7 @@ export const en: { translation: Translations } = {
       status: 'Status',
       active: 'Active',
       inactive: 'Inactive',
+      reset: 'Reset',
     },
     status: {
       active: 'Active',

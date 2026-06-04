@@ -2,15 +2,8 @@ import { useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Package,
-  Pill,
-  QrCode,
-  Settings,
-  ChevronRight,
-  ChevronLeft,
-  ShoppingBag,
-  Store,
+  LayoutDashboard, Package, Pill, QrCode, Settings,
+  ChevronRight, ChevronLeft, ShoppingBag,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../stores/appStore';
@@ -36,7 +29,13 @@ export function Sidebar() {
   const { sidebarOpen, sidebarCollapsed, toggleSidebarCollapse, setSidebarOpen, mode } = useAppStore();
 
   const menuItems = mode === 'pharmacy' ? PHARMACY_ITEMS : SHOP_ITEMS;
-  const isActive = (path: string) => location.pathname === path;
+  const currentPath = location.pathname;
+
+  // Fixed active detection - use startsWith for sub-routes
+  const isActive = (path: string) => {
+    if (path === '/dashboard') return currentPath === '/dashboard' || currentPath === '/';
+    return currentPath === path || currentPath.startsWith(path + '/');
+  };
 
   // Mode-aware accent colors
   const accent = mode === 'pharmacy'
@@ -108,6 +107,8 @@ export function Sidebar() {
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
+                    end={item.path === '/dashboard'}
+                    onClick={() => setSidebarOpen(false)}
                     className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${
                       active
                         ? accent
@@ -140,13 +141,13 @@ export function Sidebar() {
                 <span className={`inline-block w-2 h-2 rounded-full ${mode === 'pharmacy' ? 'bg-blue-500' : 'bg-teal-500'}`} />
                 <span>{t(mode === 'pharmacy' ? 'sidebar.pharmacy_mode' : 'sidebar.dashboard')}</span>
               </div>
-              <span>v2.0 — MAWARED</span>
+              <span>v2.2 — MAWARED</span>
             </div>
           )}
         </div>
       </aside>
 
-      {/* Mobile Drawer - no animation to prevent lag */}
+      {/* Mobile Drawer */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.aside
@@ -176,6 +177,7 @@ export function Sidebar() {
                     <li key={item.path}>
                       <NavLink
                         to={item.path}
+                        end={item.path === '/dashboard'}
                         onClick={() => setSidebarOpen(false)}
                         className={`relative flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${
                           active
@@ -201,7 +203,7 @@ export function Sidebar() {
               <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
                 <span className={`inline-block w-2 h-2 rounded-full ${mode === 'pharmacy' ? 'bg-blue-500' : 'bg-teal-500'}`} />
                 <span>{mode === 'pharmacy' ? t('sidebar.pharmacy_mode') : 'المحل'}</span>
-                <span className="mr-auto">v2.0</span>
+                <span className="mr-auto">v2.2</span>
               </div>
             </div>
           </motion.aside>

@@ -254,6 +254,7 @@ export interface Translations {
     status: string;
     active: string;
     inactive: string;
+    reset: string;
   };
   status: {
     active: string;
