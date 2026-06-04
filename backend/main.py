@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, date
 import random
+import os
 
 from database import engine, SessionLocal, get_db, init_db
 from database import User, Category, Product, Transaction, Alert, StoreSettings as DBStoreSettings
@@ -21,15 +24,19 @@ from auth import hash_password, verify_password, create_access_token, decode_acc
 
 app = FastAPI(title="MAWARED API", version="2.0.0")
 
+# CORS
+origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:4173", "http://localhost:8080"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── Init DB + seed on startup ───────────────────────────────────────────
+# ── Static files (SPA) ────────────────────────────────────────────────
+dist_path = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
+static_path = os.path.join(dist_path, 'assets')
 
 SEED_PRODUCTS = [
     {"name":"باراسيتامول 500 مجم","sku":"PAR-500","barcode":"1234567890123","category":"مسكنات الألم","price":15.5,"cost":8.2,"stock":120,"min_stock":20,"unit":"شريط","is_pharmacy":True,"prescription":False,"supplier":"شركة الدواء","status":"active","expiry_date":"2026-12-01"},
@@ -459,6 +466,28 @@ def dashboard(db: Session = Depends(get_db)):
 @app.get("/api/health")
 def health():
     return {"status": "ok", "time": datetime.utcnow().isoformat()}
+
+# ── SPA static files ────────────────────────────────────────────────────
+
+# Serve static assets
+if os.path.exists(static_path):
+    app.mount("/assets", StaticFiles(directory=static_path), name="assets")
+
+# Serve root static files (sw.js, manifest, etc.)
+for fname in ['sw.js', 'registerSW.js', 'manifest.webmanifest']:
+    fpath = os.path.join(dist_path, fname)
+    if os.path.exists(fpath):
+        @app.get(f"/{fname}")
+        def serve_root_file(fp=fpath):
+            return FileResponse(fp)
+
+# SPA fallback - serve index.html for all non-API routes
+@app.get("/{path:path}")
+def serve_spa(path: str):
+    index_path = os.path.join(dist_path, 'index.html')
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "ok", "message": "MAWARED API", "docs": "/docs"}
 
 # ── Run ─────────────────────────────────────────────────────────────────
 

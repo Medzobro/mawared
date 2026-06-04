@@ -1,0 +1,13 @@
+{
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build" },
+    { "src": "api/index.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/(.*)", "dest": "/dist/$1" }
+  ],
+  "env": {
+    "JWT_SECRET": "mawared-vercel-secret-key"
+  }
+}
