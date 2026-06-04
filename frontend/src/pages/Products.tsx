@@ -1,566 +1,227 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search,
-  Plus,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  QrCode,
-  Package,
-  X,
-  Pill,
-  Sun,
-  Sparkles,
-  Wind,
-  Flame,
-  Droplets,
-  CupSoda,
-  ShieldCheck,
-  SlidersHorizontal,
-  ArrowUpDown,
+  Search, Plus, ChevronLeft, ChevronRight, QrCode, Package, X,
+  Pill, Sun, Sparkles, Wind, Flame, Droplets, CupSoda, ShieldCheck,
+  SlidersHorizontal, ArrowUpDown, Trash2, Edit, Check, Loader2
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { products, categories } from '../data/demoData';
+import * as api from '../api';
 import { toArabicNumerals } from '../i18n/helpers';
-import type { Product } from '../data/demoData';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
-  },
+const categoryIconMap: Record<any, any> = {
+  'مسكنات الألم': Pill, 'مضادات حيوية': ShieldCheck, 'فيتامينات': Sun,
+  'مضادات الهيستامين': Wind, 'عناية شخصية': Sparkles, 'هضم ومعدة': Flame,
+  'عناية بالبشرة': Droplets, 'مياه ومشروبات': CupSoda,
 };
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
-};
-
-const statusConfig: Record<
-  Product['status'],
-  { labelKey: string; badge: string; color: string }
-> = {
-  active: { labelKey: 'active', badge: 'badge-success', color: '#22c55e' },
-  low_stock: { labelKey: 'low_stock', badge: 'badge-warning', color: '#f59e0b' },
-  out_of_stock: { labelKey: 'out_of_stock', badge: 'badge-danger', color: '#ef4444' },
-  expired: { labelKey: 'expired', badge: 'badge-danger', color: '#ef4444' },
-};
-
-const categoryIconMap: Record<string, React.ElementType> = {
-  'مسكنات الألم': Pill,
-  'مضادات حيوية': ShieldCheck,
-  فيتامينات: Sun,
-  'مضادات الهيستامين': Wind,
-  'عناية شخصية': Sparkles,
-  'هضم ومعدة': Flame,
-  'عناية بالبشرة': Droplets,
-  'مياه ومشروبات': CupSoda,
-  'مياه': CupSoda,
-};
-
-function getCategoryIcon(name: string) {
-  return categoryIconMap[name] || SlidersHorizontal;
-}
+function getCategoryIcon(name: string) { return categoryIconMap[name] || SlidersHorizontal; }
 
 export function Products() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || 'ar';
   const isAr = lang === 'ar';
-  const fmt = (n: number) => (isAr ? toArabicNumerals(n) : n.toString());
-  const curr = t('currency.symbol');
+  const fmt = (n: number) => (isAr ? toArabicNumerals(Math.round(n)) : n.toString());
+  const curr = t('currency.symbol') || 'MRU';
 
+  const [products, setProducts] = useState<api.Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [sortKey, setSortKey] = useState<'name' | 'price' | 'stock' | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [itemsPerPage] = useState(7);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<api.Product | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const itemsPerPage = 8;
 
-  useEffect(() => {
-    if (searchOpen && searchRef.current) {
-      searchRef.current.focus();
-    }
-  }, [searchOpen]);
+  const load = async () => {
+    setLoading(true);
+    const [ps, cs] = await Promise.all([api.products.list(), api.categories.list()]);
+    setProducts(ps);
+    setCategories(cs);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
-    let data = [...products];
-
+    let d = [...products];
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      data = data.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.category.includes(q)
-      );
+      d = d.filter((p: any) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.barcode.includes(q));
     }
-
-    if (selectedCategory !== 'all') {
-      data = data.filter((p) => p.category === selectedCategory);
-    }
-
-    if (selectedStatus !== 'all') {
-      data = data.filter((p) => p.status === selectedStatus);
-    }
-
-    if (sortKey) {
-      data.sort((a, b) => {
-        const aVal = sortKey === 'name' ? a.name : a[sortKey];
-        const bVal = sortKey === 'name' ? b.name : b[sortKey];
-        if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return data;
-  }, [search, selectedCategory, selectedStatus, sortKey, sortDir]);
+    if (selectedCategory !== 'all') d = d.filter((p: any) => p.category === selectedCategory);
+    if (selectedStatus !== 'all') d = d.filter((p: any) => p.status === selectedStatus);
+    d.sort((a: any, b: any) => {
+      const aVal = sortKey === 'name' ? a.name : sortKey === 'price' ? a.price : a.stock;
+      const bVal = sortKey === 'name' ? b.name : sortKey === 'price' ? b.price : b.stock;
+      return sortDir === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+    });
+    return d;
+  }, [products, search, selectedCategory, selectedStatus, sortKey, sortDir]);
 
   const pages = Math.ceil(filtered.length / itemsPerPage) || 1;
-  const pageItems = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handleSort = (key: 'name' | 'price' | 'stock') => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+  const handleSort = (k: string) => {
+    if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(k); setSortDir('asc'); }
+  };
+
+  const ProductForm = ({ initial, onClose }: { initial?: api.Product | null; onClose: () => void }) => {
+    const [form, setForm] = useState({
+      name: initial?.name || '', sku: initial?.sku || '', barcode: initial?.barcode || '',
+      category: initial?.category || (categories[0]?.name || ''), price: initial?.price || 0, cost: initial?.cost || 0,
+      stock: initial?.stock ?? 0, min_stock: initial?.min_stock ?? 10, unit: initial?.unit || 'piece',
+      is_pharmacy: initial?.is_pharmacy || false, prescription: initial?.prescription || false,
+      supplier: initial?.supplier || '', status: initial?.status || 'active', expiry_date: initial?.expiry_date || '',
+    });
+    const [saving, setSaving] = useState(false);
+
+    const submit = async () => {
+      if (!form.name || !form.sku || !form.barcode) return;
+      setSaving(true);
+      try {
+        if (initial) await api.products.update(initial.id, form);
+        else await api.products.create(form as any);
+        onClose();
+        load();
+      } catch (e) { console.error(e); }
+      setSaving(false);
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <motion.div initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }} className="w-full max-w-lg card-glass rounded-2xl p-6 max-h-[90vh] overflow-y-auto space-y-3">
+          <h3 className="text-lg font-bold">{initial ? 'تعديل منتج' : 'إضافة منتج جديد'}</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <input placeholder="اسم المنتج" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="input-premium" />
+            <input placeholder="SKU" value={form.sku} onChange={e=>setForm({...form, sku:e.target.value})} className="input-premium" />
+            <input placeholder="الباركود" value={form.barcode} onChange={e=>setForm({...form, barcode:e.target.value})} className="input-premium" />
+            <select value={form.category} onChange={e=>setForm({...form, category:e.target.value})} className="input-premium">{categories.map((c: any) => <option key={c.name} value={c.name}>{c.name}</option>)}</select>
+            <input type="number" placeholder="السعر" value={form.price} onChange={e=>setForm({...form, price:+e.target.value})} className="input-premium" />
+            <input type="number" placeholder="التكلفة" value={form.cost} onChange={e=>setForm({...form, cost:+e.target.value})} className="input-premium" />
+            <input type="number" placeholder="المخزون" value={form.stock} onChange={e=>setForm({...form, stock:+e.target.value})} className="input-premium" />
+            <input type="number" placeholder="حد الأدنى" value={form.min_stock} onChange={e=>setForm({...form, min_stock:+e.target.value})} className="input-premium" />
+            <input placeholder="الوحدة" value={form.unit} onChange={e=>setForm({...form, unit:e.target.value})} className="input-premium" />
+            <input placeholder="المورد" value={form.supplier} onChange={e=>setForm({...form, supplier:e.target.value})} className="input-premium" />
+            <input type="date" placeholder="تاريخ الانتهاء" value={form.expiry_date} onChange={e=>setForm({...form, expiry_date:e.target.value})} className="input-premium" />
+            <select value={form.status} onChange={e=>setForm({...form, status:e.target.value})} className="input-premium">
+              <option value="active">نشط</option>
+              <option value="low_stock">منخفض</option>
+              <option value="out_of_stock">نفاد</option>
+              <option value="expired">منتهي</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-4 pt-2">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_pharmacy} onChange={e=>setForm({...form, is_pharmacy:e.target.checked})} /><span>صيدلي</span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.prescription} onChange={e=>setForm({...form, prescription:e.target.checked})} /><span>يتطلب وصفة</span></label>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button onClick={submit} disabled={saving} className="btn-premium flex-1">{saving ? '...' : <><Check className="w-4 h-4" /> حفظ</>}</button>
+            <button onClick={onClose} className="btn-secondary flex-1">إلغاء</button>
+          </div>
+        </motion.div>
+      </div>
+    );
   };
 
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">
-            <span className="text-gradient">{t('products.title')}</span>
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
-            {t('products.product_desc')}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Search */}
-          <motion.div
-            animate={{ width: searchOpen ? 260 : 44 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-            className="h-11 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center overflow-hidden"
-          >
-            <button
-              onClick={() => {
-                setSearchOpen(true);
-                setTimeout(() => searchRef.current?.focus(), 100);
-              }}
-              className="w-11 h-11 flex-shrink-0 flex items-center justify-center text-[var(--text-muted)]"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-            <AnimatePresence>
-              {searchOpen && (
-                <>
-                  <motion.input
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    ref={searchRef}
-                    type="text"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    onBlur={() => {
-                      if (!search.trim()) setSearchOpen(false);
-                    }}
-                    placeholder={t('products.search_placeholder')}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] pr-2"
-                  />
-                  {search && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      onClick={() => {
-                        setSearch('');
-                        searchRef.current?.focus();
-                      }}
-                      className="w-8 h-8 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    >
-                      <X className="w-4 h-4" />
-                    </motion.button>
-                  )}
-                </>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          {/* Filters */}
-          <div className="relative group">
-            <button className="h-11 px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-              <Filter className="w-4.5 h-4.5" />
-              <span className="hidden sm:inline">{t('products.filter')}</span>
-            </button>
-            <div className="absolute top-12 left-0 w-56 bg-[var(--bg-card)] backdrop-blur-2xl border border-[var(--border-subtle)] rounded-2xl shadow-2xl shadow-black/10 p-4 space-y-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40">
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] mb-2">
-                  {t('products.filter_by_category')}
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => {
-                    setSelectedCategory(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] outline-none focus:border-teal-500"
-                >
-                  <option value="all">{t('products.all')}</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] mb-2">
-                  {t('products.filter_by_status')}
-                </label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => {
-                    setSelectedStatus(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] outline-none focus:border-teal-500"
-                >
-                  <option value="all">{t('products.all')}</option>
-                  <option value="active">{t('status.active')}</option>
-                  <option value="low_stock">{t('status.low_stock')}</option>
-                  <option value="out_of_stock">{t('status.out_of_stock')}</option>
-                  <option value="expired">{t('status.expired')}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Add button */}
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => setShowAddModal(true)}
-            className="btn-premium text-sm gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('products.add_product')}</span>
-          </motion.button>
-        </div>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div><h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('products.title')}</h1><p className="text-sm text-[var(--text-secondary)]">{t('products.product_desc')}</p></div>
+        <button onClick={() => { setEditingProduct(null); setShowForm(true); }} className="btn-premium gap-2">
+          <Plus className="w-4 h-4" />{t('products.add_product')}
+        </button>
       </motion.div>
 
-      {/* Products Table */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="card-glass card-glow rounded-2xl overflow-hidden"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] text-xs">
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">
-                  <button
-                    onClick={() => handleSort('name')}
-                    className="inline-flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    {t('products.name')}
-                    <ArrowUpDown className="w-3 h-3" />
-                  </button>
-                </th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">{t('products.sku')}</th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">{t('products.category')}</th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">
-                  <button
-                    onClick={() => handleSort('stock')}
-                    className="inline-flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    {t('products.stock')}
-                    <ArrowUpDown className="w-3 h-3" />
-                  </button>
-                </th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">
-                  <button
-                    onClick={() => handleSort('price')}
-                    className="inline-flex items-center gap-1 hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    {t('products.price')}
-                    <ArrowUpDown className="w-3 h-3" />
-                  </button>
-                </th>
-                <th className="px-5 py-4 text-right font-medium whitespace-nowrap">{t('products.status')}</th>
-                <th className="px-5 py-4 text-center font-medium whitespace-nowrap">{t('products.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <AnimatePresence mode="wait">
-                {pageItems.length === 0 ? (
-                  <motion.tr
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <td colSpan={7} className="px-5 py-16 text-center text-[var(--text-muted)]">
-                      <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p>{t('products.no_products')}</p>
-                    </td>
-                  </motion.tr>
-                ) : (
-                  pageItems.map((product, i) => {
-                    const status = statusConfig[product.status];
-                    const stockColor =
-                      product.stock === 0
-                        ? 'text-red-500'
-                        : product.stock <= product.minStock
-                          ? 'text-amber-500'
-                          : 'text-emerald-500';
-                    const lowStock = product.stock <= product.minStock && product.stock > 0;
-                    const CategoryIcon = getCategoryIcon(product.category);
-
-                    return (
-                      <motion.tr
-                        key={product.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ delay: i * 0.04 }}
-                        className="table-row-glow border-b border-[var(--border-subtle)] last:border-b-0"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)]">
-                              <CategoryIcon className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-[var(--text-primary)] text-sm">
-                                {product.name}
-                              </p>
-                              {product.prescription && (
-                                <span className="text-[10px] text-amber-500 font-medium">
-                                      {t('products.prescription_required')}
-                                    </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-[var(--text-secondary)] whitespace-nowrap">
-                          {product.sku}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-                            <span
-                              className="w-1.5 h-1.5 rounded-full"
-                              style={{ backgroundColor: status.color }}
-                            />
-                            {product.category}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold text-sm ${stockColor}`}>
-                              {fmt(product.stock)}
-                            </span>
-                            <span className="text-xs text-[var(--text-muted)]">
-                              {product.unit}
-                            </span>
-                            {lowStock && (
-                              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-[var(--text-primary)] font-semibold whitespace-nowrap">
-                          {product.price.toFixed(2)} {curr}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className={`badge ${status.badge}`}>{t(`status.${status.labelKey}`)}</span>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2">
-                            <motion.button
-                              whileHover={{ scale: 1.15 }}
-                              whileTap={{ scale: 0.9 }}
-                              onClick={() =>
-                                (window.location.hash = `/qr?product=${product.id}`)
-                              }
-                              title={t('products.qr_barcode_view')}
-                              className="w-9 h-9 rounded-lg flex items-center justify-center bg-teal-50 dark:bg-teal-950 text-teal-600 hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors"
-                            >
-                              <QrCode className="w-4 h-4" />
-                            </motion.button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })
-                )}
-              </AnimatePresence>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--border-subtle)]">
-          <p className="text-xs text-[var(--text-muted)]">
-            {t('products.showing_x_of_y', { count: fmtNum(pageItems.length), total: fmtNum(filtered.length) })}
-          </p>
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--border-subtle)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-elevated)] transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </motion.button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: pages }, (_, i) => i + 1).map((page) => (
-                <motion.button
-                  key={page}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-medium transition-colors ${
-                    currentPage === page
-                      ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
-                  }`}
-                >
-                  {fmt(page)}
-                </motion.button>
-              ))}
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentPage((p) => Math.min(pages, p + 1))}
-              disabled={currentPage === pages}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--border-subtle)] text-[var(--text-secondary)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-elevated)] transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Add Product Modal */}
       <AnimatePresence>
-        {showAddModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => setShowAddModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg card-glass rounded-2xl p-6"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                  {t('products.add_new_product')}
-                </h2>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[var(--bg-elevated)] text-[var(--text-muted)] transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+        {showForm && <ProductForm initial={editingProduct} onClose={() => setShowForm(false)} />}
+        {deleteId !== null && (
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="card-glass rounded-2xl p-6 text-center max-w-sm">
+              <Trash2 className="w-10 h-10 mx-auto mb-3 text-red-500" />
+              <p>هل أنت متأكد من حذف هذا المنتج؟</p>
+              <div className="flex gap-2 mt-4">
+                <button onClick={async () => { await api.products.del(deleteId); setDeleteId(null); load(); }} className="btn-premium bg-red-500 flex-1">حذف</button>
+                <button onClick={() =>setDeleteId(null)} className="btn-secondary flex-1">إلغاء</button>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                    {t('products.product_name')}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={t('products.enter_product_name')}
-                    className="input-premium"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                      {t('products.sku')}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={t('products.product_sku')}
-                      className="input-premium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                      {t('products.price')}
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="0.00"
-                      className="input-premium"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-                    {t('products.category')}
-                  </label>
-                  <select className="input-premium">
-                    <option>{t('products.select_category')}</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="pt-2">
-                  <button
-                    onClick={() => setShowAddModal(false)}
-                    className="btn-premium w-full gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    {t('products.add_product')}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="card-glass rounded-2xl overflow-hidden">
+        <div className="p-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث في المنتجات..." className="input-premium w-full pr-10" />
+          </div>
+          <select value={selectedCategory} onChange={e=>setSelectedCategory(e.target.value)} className="input-premium">
+            <option value="all">كل الفئات</option>{categories.map((c: any) => <option key={c.name} value={c.name}>{c.name}</option>)}
+          </select>
+          <select value={selectedStatus} onChange={e=>setSelectedStatus(e.target.value)} className="input-premium">
+            <option value="all">كل الحالات</option>
+            <option value="active">نشط</option>
+            <option value="low_stock">منخفض</option>
+            <option value="out_of_stock">نفاد</option>
+            <option value="expired">منتهي</option>
+          </select>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
+                {<>
+                <th className="px-4 py-3 text-right font-medium">{t('products.name')}</th>
+                <th className="px-4 py-3 text-right font-medium cursor-pointer" onClick={()=>handleSort('sku')}>{t('products.sku')}</th>
+                <th className="px-4 py-3 text-right font-medium">{t('products.category')}</th>
+                <th className="px-4 py-3 text-right font-medium cursor-pointer" onClick={()=>handleSort('price')}>{t('products.price')}</th>
+                <th className="px-4 py-3 text-right font-medium cursor-pointer" onClick={()=>handleSort('stock')}>{t('products.stock')}</th>
+                <th className="px-4 py-3 text-right font-medium">{t('products.status')}</th>
+                <th className="px-4 py-3 text-right font-medium"></th>
+                </>}
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((p: any) => {
+                const Icon = getCategoryIcon(p.category);
+                return (
+                  <tr key={p.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors">
+                    <td className="px-4 py-3 font-medium">{p.name}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{p.sku}</td>
+                    <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-md bg-teal-50 dark:bg-teal-950 flex items-center justify-center"><Icon className="w-3.5 h-3.5 text-teal-600" /></div><span>{p.category}</span></div></td>
+                    <td className="px-4 py-3">{fmt(p.price)} {curr}</td>
+                    <td className="px-4 py-3">{fmt(p.stock)}</td>
+                    <td className="px-4 py-3"><span className={`badge ${p.status==='active'?'badge-success':p.status==='low_stock'?'badge-warning':'badge-danger'}`}>
+                      {p.status==='active'?'نشط':p.status==='low_stock'?'منخفض':p.status==='out_of_stock'?'نفاد':'منتهي'}</span></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button onClick={()=>{setEditingProduct(p);setShowForm(true);}} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 text-blue-500"><Edit className="w-4 h-4" /></button>
+                        <button onClick={()=>setDeleteId(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900 text-red-500"><Trash2 className="w-4 h-4" /></button>
+                        <button className="p-1.5 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900 text-teal-500"><QrCode className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length === 0 && <div className="p-6 text-center text-sm text-[var(--text-muted)]">لا توجد منتجات</div>}
+        </div>
+
+        <div className="p-4 flex items-center justify-between border-t border-[var(--border-subtle)]">
+          <span className="text-xs text-[var(--text-muted)]">{filtered.length} منتج</span>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>setCurrentPage(Math.max(1,currentPage-1))} disabled={currentPage===1} className="p-2 rounded-lg hover:bg-[var(--bg-elevated)] disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-sm">{currentPage} / {pages}</span>
+            <button onClick={()=>setCurrentPage(Math.min(pages,currentPage+1))} disabled={currentPage===pages} className="p-2 rounded-lg hover:bg-[var(--bg-elevated)] disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
-
-function fmtNum(n: number): string {
-  return n.toLocaleString('ar-SA');
 }

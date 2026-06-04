@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { auth } from '../api';
 
 export type AppMode = 'shop' | 'pharmacy';
 export type Theme = 'light' | 'dark' | 'system';
@@ -31,6 +32,9 @@ interface AppState {
 
   isAuthenticated: boolean;
   user: User | null;
+  token: string | null;
+  loginLoading: boolean;
+  loginError: string | null;
 
   setMode: (mode: AppMode) => void;
   setTheme: (theme: Theme) => void;
@@ -40,7 +44,8 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   toggleSidebarCollapse: () => void;
 
-  login: (username: string, accountType?: AppMode) => void;
+  loginApi: (username: string, password: string, accountType?: AppMode) => Promise<void>;
+  registerApi: (username: string, password: string, accountType?: AppMode) => Promise<void>;
   logout: () => void;
 
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
@@ -63,6 +68,9 @@ export const useAppStore = create<AppState>()(
       activeRoute: '/dashboard',
       isAuthenticated: false,
       user: null,
+      token: null,
+      loginLoading: false,
+      loginError: null,
 
       setMode: (mode) => {
         set({ mode });
@@ -90,14 +98,35 @@ export const useAppStore = create<AppState>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebarCollapse: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-      login: (username, accountType) => {
-        const mode = accountType || 'shop';
-        const user: User = { username, name: username };
-        set({ isAuthenticated: true, user, mode });
-        document.documentElement.setAttribute('data-mode', mode);
+      loginApi: async (username, password, accountType) => {
+        set({ loginLoading: true, loginError: null });
+        try {
+          const res = await auth.login({ username, password });
+          localStorage.setItem('mawared_token', res.access_token);
+          const mode = accountType || 'shop';
+          set({ token: res.access_token, isAuthenticated: true, loginLoading: false, user: { username, name: username }, mode });
+          document.documentElement.setAttribute('data-mode', mode);
+        } catch (e: any) {
+          set({ loginLoading: false, loginError: e.message || 'Login failed' });
+          throw e;
+        }
+      },
+      registerApi: async (username, password, accountType) => {
+        set({ loginLoading: true, loginError: null });
+        try {
+          const res = await auth.register({ username, password });
+          localStorage.setItem('mawared_token', res.access_token);
+          const mode = accountType || 'shop';
+          set({ token: res.access_token, isAuthenticated: true, loginLoading: false, user: { username, name: username }, mode });
+          document.documentElement.setAttribute('data-mode', mode);
+        } catch (e: any) {
+          set({ loginLoading: false, loginError: e.message || 'Registration failed' });
+          throw e;
+        }
       },
       logout: () => {
-        set({ isAuthenticated: false, user: null, mode: 'shop', activeRoute: '/dashboard' });
+        localStorage.removeItem('mawared_token');
+        set({ isAuthenticated: false, user: null, mode: 'shop', activeRoute: '/dashboard', token: null });
         document.documentElement.setAttribute('data-mode', 'shop');
       },
 
@@ -135,6 +164,7 @@ export const useAppStore = create<AppState>()(
         language: state.language,
         isAuthenticated: state.isAuthenticated,
         user: state.user,
+        token: state.token,
       }),
     }
   )
