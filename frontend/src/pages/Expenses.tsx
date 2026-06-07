@@ -71,6 +71,8 @@ export function Expenses() {
     });
   }, [items, search, categoryFilter]);
 
+  const fmtNum = (n: number) => n.toLocaleString('en-US');
+
   const total = useMemo(() => items.reduce((sum, i) => sum + i.amount, 0), [items]);
   const monthly = useMemo(() => {
     const now = new Date();
@@ -158,7 +160,7 @@ export function Expenses() {
             <div className="p-2.5 rounded-xl bg-red-500/10"><TrendingDown className="w-5 h-5 text-red-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('expenses.total_expenses')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{total.toLocaleString()}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(total)}</div>
             </div>
           </div>
         </motion.div>
@@ -167,7 +169,7 @@ export function Expenses() {
             <div className="p-2.5 rounded-xl bg-amber-500/10"><Calendar className="w-5 h-5 text-amber-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('expenses.monthly_expenses')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{monthly.toLocaleString()}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(monthly)}</div>
             </div>
           </div>
         </motion.div>
@@ -176,7 +178,7 @@ export function Expenses() {
             <div className="p-2.5 rounded-xl bg-blue-500/10"><Receipt className="w-5 h-5 text-blue-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('products.items')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{items.length}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(items.length)}</div>
             </div>
           </div>
         </motion.div>
@@ -185,7 +187,7 @@ export function Expenses() {
             <div className="p-2.5 rounded-xl bg-emerald-500/10"><DollarSign className="w-5 h-5 text-emerald-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('expenses.amount')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{items.length ? (total / items.length).toFixed(2) : '0'}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{items.length ? fmtNum(Number((total / items.length).toFixed(2))) : '0'}</div>
             </div>
           </div>
         </motion.div>
@@ -271,7 +273,7 @@ export function Expenses() {
                             {t(`expenses.${item.category}`)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.amount.toLocaleString()}</td>
+                        <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{fmtNum(item.amount)}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs text-[var(--text-secondary)] capitalize">{t(`expenses.${item.payment_method}`)}</span>
                         </td>

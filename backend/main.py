@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -615,6 +615,14 @@ def list_audit_logs(
         q = q.filter(AuditLog.entity == entity)
     return q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
 
+def _get_token(auth: str | None) -> str | None:
+    if not auth:
+        return None
+    scheme, _, token = auth.partition(" ")
+    if scheme.lower() != "bearer":
+        return None
+    return token
+
 # ── Expenses ────────────────────────────────────────────────────────────
 
 EXPENSE_CATEGORIES = ["rent", "utilities", "salaries", "supplies", "maintenance", "marketing", "transport", "other"]
@@ -625,8 +633,13 @@ def list_expenses(
     category: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
     db: Session = Depends(get_db)
 ):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    get_current_user(token, db)
     q = db.query(Expense)
     if search:
         q = q.filter(Expense.title.contains(search))
@@ -639,16 +652,35 @@ def list_expenses(
     return q.order_by(Expense.date.desc()).all()
 
 @app.post("/api/expenses", response_model=ExpenseOut)
-def create_expense(expense: ExpenseCreate, request: Request, db: Session = Depends(get_db)):
-    e = Expense(**expense.model_dump())
+def create_expense(
+    expense: ExpenseCreate,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
+    e = Expense(**expense.model_dump(), created_by=user.id)
     db.add(e)
     db.commit()
     db.refresh(e)
-    log_audit(db, "create", "expense", e.id, 0, f"Created expense: {e.title} - {e.amount}")
+    log_audit(db, "create", "expense", e.id, user.id, f"Created expense: {e.title} - {e.amount}")
     return e
 
 @app.put("/api/expenses/{expense_id}", response_model=ExpenseOut)
-def update_expense(expense_id: int, update: ExpenseUpdate, request: Request, db: Session = Depends(get_db)):
+def update_expense(
+    expense_id: int,
+    update: ExpenseUpdate,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
     e = db.query(Expense).filter(Expense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -656,18 +688,27 @@ def update_expense(expense_id: int, update: ExpenseUpdate, request: Request, db:
         setattr(e, field, value)
     db.commit()
     db.refresh(e)
-    log_audit(db, "update", "expense", e.id, 0, f"Updated expense: {e.title}")
+    log_audit(db, "update", "expense", e.id, user.id, f"Updated expense: {e.title}")
     return e
 
 @app.delete("/api/expenses/{expense_id}")
-def delete_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+def delete_expense(
+    expense_id: int,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
     e = db.query(Expense).filter(Expense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Expense not found")
     title = e.title
     db.delete(e)
     db.commit()
-    log_audit(db, "delete", "expense", expense_id, 0, f"Deleted expense: {title}")
+    log_audit(db, "delete", "expense", expense_id, user.id, f"Deleted expense: {title}")
     return {"ok": True}
 
 # ── Employee Expenses ───────────────────────────────────────────────────
@@ -681,8 +722,13 @@ def list_employee_expenses(
     category: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
     db: Session = Depends(get_db)
 ):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    get_current_user(token, db)
     q = db.query(EmployeeExpense)
     if search:
         q = q.filter(EmployeeExpense.employee_name.contains(search))
@@ -697,16 +743,35 @@ def list_employee_expenses(
     return q.order_by(EmployeeExpense.date.desc()).all()
 
 @app.post("/api/employee-expenses", response_model=EmployeeExpenseOut)
-def create_employee_expense(expense: EmployeeExpenseCreate, request: Request, db: Session = Depends(get_db)):
+def create_employee_expense(
+    expense: EmployeeExpenseCreate,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
     e = EmployeeExpense(**expense.model_dump())
     db.add(e)
     db.commit()
     db.refresh(e)
-    log_audit(db, "create", "employee_expense", e.id, 0, f"Created employee expense: {e.employee_name} - {e.amount}")
+    log_audit(db, "create", "employee_expense", e.id, user.id, f"Created employee expense: {e.employee_name} - {e.amount}")
     return e
 
 @app.put("/api/employee-expenses/{expense_id}", response_model=EmployeeExpenseOut)
-def update_employee_expense(expense_id: int, update: EmployeeExpenseUpdate, request: Request, db: Session = Depends(get_db)):
+def update_employee_expense(
+    expense_id: int,
+    update: EmployeeExpenseUpdate,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
     e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Employee expense not found")
@@ -714,40 +779,68 @@ def update_employee_expense(expense_id: int, update: EmployeeExpenseUpdate, requ
         setattr(e, field, value)
     db.commit()
     db.refresh(e)
-    log_audit(db, "update", "employee_expense", e.id, 0, f"Updated employee expense: {e.employee_name}")
+    log_audit(db, "update", "employee_expense", e.id, user.id, f"Updated employee expense: {e.employee_name}")
     return e
 
 @app.delete("/api/employee-expenses/{expense_id}")
-def delete_employee_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+def delete_employee_expense(
+    expense_id: int,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
     e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Employee expense not found")
     name = e.employee_name
     db.delete(e)
     db.commit()
-    log_audit(db, "delete", "employee_expense", expense_id, 0, f"Deleted employee expense: {name}")
+    log_audit(db, "delete", "employee_expense", expense_id, user.id, f"Deleted employee expense: {name}")
     return {"ok": True}
 
 @app.patch("/api/employee-expenses/{expense_id}/approve")
-def approve_employee_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+def approve_employee_expense(
+    expense_id: int,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_admin(token, db)
     e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Employee expense not found")
     e.status = "approved"
+    e.approved_by = user.id
     db.commit()
     db.refresh(e)
-    log_audit(db, "approve", "employee_expense", e.id, 0, f"Approved employee expense: {e.employee_name}")
+    log_audit(db, "approve", "employee_expense", e.id, user.id, f"Approved employee expense: {e.employee_name}")
     return {"ok": True, "status": "approved"}
 
 @app.patch("/api/employee-expenses/{expense_id}/reject")
-def reject_employee_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+def reject_employee_expense(
+    expense_id: int,
+    request: Request,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+    db: Session = Depends(get_db)
+):
+    token = _get_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_admin(token, db)
     e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Employee expense not found")
     e.status = "rejected"
     db.commit()
     db.refresh(e)
-    log_audit(db, "reject", "employee_expense", e.id, 0, f"Rejected employee expense: {e.employee_name}")
+    log_audit(db, "reject", "employee_expense", e.id, user.id, f"Rejected employee expense: {e.employee_name}")
     return {"ok": True, "status": "rejected"}
 
 # ── Health ──────────────────────────────────────────────────────────────

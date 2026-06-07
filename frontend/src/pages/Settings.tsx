@@ -53,19 +53,31 @@ export function Settings() {
 
   useEffect(() => {
     api.settings.get().then((s: any) => {
+      const loadedLang = s.language || 'ar';
+      const loadedTheme = s.theme || 'system';
+      const loadedSymbol = s.currency_symbol || 'MRU';
       setStoreName(s.store_name || '');
       setStoreAddress(s.store_address || '');
       setStorePhone(s.store_phone || '');
-      setTheme(s.theme || 'system');
-      setLang(s.language || 'ar');
-      setCurrencySymbol(s.currency_symbol || 'MRU');
-      setCurrencyLabel(s.currency_label || 'أوقية');
+      setTheme(loadedTheme);
+      setLang(loadedLang);
+      setCurrencySymbol(loadedSymbol);
+      const cur = CURRENCIES.find((c) => c.symbol === loadedSymbol);
+      setCurrencyLabel(cur ? (loadedLang === 'ar' ? cur.label : cur.label_en) : (loadedLang === 'ar' ? 'أوقية' : 'Ouguiya'));
       setEmailNotifications(!!s.email_notifications);
       setPushNotifications(!!s.push_notifications);
       setSmsNotifications(!!s.sms_notifications);
       setLowStockAlert(!!s.low_stock_alert);
       setExpiryAlert(!!s.expiry_alert);
       setDailyReport(!!s.daily_report);
+      // Apply immediately on load
+      applyTheme(loadedTheme);
+      if (loadedLang !== i18n.language) {
+        i18n.changeLanguage(loadedLang);
+        setLanguage(loadedLang as any);
+        document.documentElement.setAttribute('dir', loadedLang === 'ar' ? 'rtl' : 'ltr');
+        document.documentElement.setAttribute('lang', loadedLang);
+      }
       setLoading(false);
     }).catch(() => {
       setStoreName('مورد - MAWARED');
@@ -81,6 +93,7 @@ export function Settings() {
       setLowStockAlert(true);
       setExpiryAlert(true);
       setDailyReport(false);
+      applyTheme('system');
       setLoading(false);
     });
   }, []);
@@ -144,7 +157,7 @@ export function Settings() {
   const handleCurrencyChange = (symbol: string) => {
     setCurrencySymbol(symbol);
     const cur = CURRENCIES.find((c) => c.symbol === symbol);
-    if (cur) setCurrencyLabel(isAr ? cur.label : cur.label_en);
+    if (cur) setCurrencyLabel(language === 'ar' ? cur.label : cur.label_en);
   };
 
   if (loading) return (

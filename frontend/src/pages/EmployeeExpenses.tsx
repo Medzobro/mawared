@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Search, Trash2, Edit2, X, Save, Users, CheckCircle, XCircle,
   Clock, TrendingDown, DollarSign, Calendar, Filter, ChevronDown,
-  AlertTriangle, UserCheck, Plane, UtensilsCrossed, Briefcase, Hotel,
+  AlertTriangle, Plane, UtensilsCrossed, Briefcase, Hotel,
   Receipt,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -75,6 +75,8 @@ export function EmployeeExpenses() {
     });
   }, [items, search, statusFilter, categoryFilter]);
 
+  const fmtNum = (n: number) => n.toLocaleString('en-US');
+
   const totalPending = useMemo(() => items.filter((i) => i.status === 'pending').reduce((sum, i) => sum + i.amount, 0), [items]);
   const totalApproved = useMemo(() => items.filter((i) => i.status === 'approved').reduce((sum, i) => sum + i.amount, 0), [items]);
   const monthly = useMemo(() => {
@@ -133,21 +135,29 @@ export function EmployeeExpenses() {
     }
   };
 
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+
   const handleApprove = async (id: number) => {
+    setActionLoading(id);
     try {
       await api.employeeExpenses.approve(id);
       await loadData();
     } catch (e) {
       console.error('Approve failed', e);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleReject = async (id: number) => {
+    setActionLoading(id);
     try {
       await api.employeeExpenses.reject(id);
       await loadData();
     } catch (e) {
       console.error('Reject failed', e);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -181,7 +191,7 @@ export function EmployeeExpenses() {
             <div className="p-2.5 rounded-xl bg-amber-500/10"><Clock className="w-5 h-5 text-amber-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('employee_expenses.total_pending')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{totalPending.toLocaleString()}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(totalPending)}</div>
             </div>
           </div>
         </motion.div>
@@ -190,7 +200,7 @@ export function EmployeeExpenses() {
             <div className="p-2.5 rounded-xl bg-emerald-500/10"><CheckCircle className="w-5 h-5 text-emerald-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('employee_expenses.total_approved')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{totalApproved.toLocaleString()}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(totalApproved)}</div>
             </div>
           </div>
         </motion.div>
@@ -199,7 +209,7 @@ export function EmployeeExpenses() {
             <div className="p-2.5 rounded-xl bg-blue-500/10"><Calendar className="w-5 h-5 text-blue-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('employee_expenses.monthly_total')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{monthly.toLocaleString()}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(monthly)}</div>
             </div>
           </div>
         </motion.div>
@@ -208,7 +218,7 @@ export function EmployeeExpenses() {
             <div className="p-2.5 rounded-xl bg-purple-500/10"><Users className="w-5 h-5 text-purple-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('products.items')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{items.length}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{fmtNum(items.length)}</div>
             </div>
           </div>
         </motion.div>
@@ -310,7 +320,7 @@ export function EmployeeExpenses() {
                             {t(`employee_expenses.${item.category}`)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{item.amount.toLocaleString()}</td>
+                        <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">{fmtNum(item.amount)}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: statusCfg.bg, color: statusCfg.color }}>
                             <StatusIcon className="w-3 h-3" />{t(`employee_expenses.${item.status}`)}
@@ -321,11 +331,11 @@ export function EmployeeExpenses() {
                           <div className="flex items-center gap-1">
                             {item.status === 'pending' && (
                               <>
-                                <button onClick={() => handleApprove(item.id)} className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-[var(--text-secondary)] hover:text-emerald-500 transition-colors" title={t('employee_expenses.approve')}>
-                                  <CheckCircle className="w-4 h-4" />
+                                <button onClick={() => handleApprove(item.id)} disabled={actionLoading === item.id} className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-[var(--text-secondary)] hover:text-emerald-500 transition-colors disabled:opacity-40" title={t('employee_expenses.approve')}>
+                                  <CheckCircle className={`w-4 h-4 ${actionLoading === item.id ? 'animate-spin' : ''}`} />
                                 </button>
-                                <button onClick={() => handleReject(item.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 transition-colors" title={t('employee_expenses.reject')}>
-                                  <XCircle className="w-4 h-4" />
+                                <button onClick={() => handleReject(item.id)} disabled={actionLoading === item.id} className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 transition-colors disabled:opacity-40" title={t('employee_expenses.reject')}>
+                                  <XCircle className={`w-4 h-4 ${actionLoading === item.id ? 'animate-spin' : ''}`} />
                                 </button>
                               </>
                             )}
