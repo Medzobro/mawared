@@ -307,6 +307,7 @@ class EmployeeExpenseUpdate(BaseModel):
     category: Optional[str] = None
     date: Optional[str] = None
     description: Optional[str] = None
+    status: Optional[str] = None
 
 class EmployeeExpenseOut(EmployeeExpenseBase):
     id: int

@@ -777,7 +777,7 @@ def update_employee_expense(
         raise HTTPException(status_code=404, detail="Employee expense not found")
     update_data = update.model_dump(exclude_unset=True)
     # Only admins can change status via PUT; regular users get 403
-    if "status" in update_data and user.role != "admin":
+    if "status" in update_data and update_data["status"] != e.status and user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required to change status")
     for field, value in update_data.items():
         setattr(e, field, value)
