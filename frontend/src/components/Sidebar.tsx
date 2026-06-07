@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, Pill, QrCode, Settings,
-  ChevronRight, ChevronLeft, ShoppingBag,
+  ChevronRight, ChevronLeft, ShoppingBag, Receipt, Users,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../stores/appStore';
@@ -12,6 +12,8 @@ import { useAppStore } from '../stores/appStore';
 const SHOP_ITEMS = [
   { path: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
   { path: '/products', key: 'products', icon: Package },
+  { path: '/expenses', key: 'expenses', icon: Receipt },
+  { path: '/employee-expenses', key: 'employee_expenses', icon: Users },
   { path: '/qr', key: 'qr_barcode', icon: QrCode },
   { path: '/settings', key: 'settings', icon: Settings },
 ];
@@ -19,6 +21,8 @@ const SHOP_ITEMS = [
 const PHARMACY_ITEMS = [
   { path: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
   { path: '/pharmacy', key: 'pharmacy_mode', icon: Pill },
+  { path: '/expenses', key: 'expenses', icon: Receipt },
+  { path: '/employee-expenses', key: 'employee_expenses', icon: Users },
   { path: '/qr', key: 'qr_barcode', icon: QrCode },
   { path: '/settings', key: 'settings', icon: Settings },
 ];

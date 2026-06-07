@@ -16,7 +16,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from database import engine, SessionLocal, get_db, init_db
-from database import User, Category, Product, Transaction, Alert, StoreSettings as DBStoreSettings, AuditLog
+from database import User, Category, Product, Transaction, Alert, StoreSettings as DBStoreSettings, AuditLog, Expense, EmployeeExpense
 from schemas import (
     UserCreate, UserOut, LoginRequest, Token,
     ProductCreate, ProductUpdate, ProductOut, PaginatedProducts,
@@ -26,6 +26,8 @@ from schemas import (
     StoreSettings,
     DashboardData, DashboardKPIs, WeeklySalesItem, CategoryDistributionItem,
     RecentTransactionItem, AlertItem, AuditLogOut,
+    ExpenseCreate, ExpenseUpdate, ExpenseOut,
+    EmployeeExpenseCreate, EmployeeExpenseUpdate, EmployeeExpenseOut,
 )
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 
@@ -612,6 +614,141 @@ def list_audit_logs(
     if entity:
         q = q.filter(AuditLog.entity == entity)
     return q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+
+# ── Expenses ────────────────────────────────────────────────────────────
+
+EXPENSE_CATEGORIES = ["rent", "utilities", "salaries", "supplies", "maintenance", "marketing", "transport", "other"]
+
+@app.get("/api/expenses", response_model=List[ExpenseOut])
+def list_expenses(
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    q = db.query(Expense)
+    if search:
+        q = q.filter(Expense.title.contains(search))
+    if category and category != "all":
+        q = q.filter(Expense.category == category)
+    if start_date:
+        q = q.filter(Expense.date >= start_date)
+    if end_date:
+        q = q.filter(Expense.date <= end_date)
+    return q.order_by(Expense.date.desc()).all()
+
+@app.post("/api/expenses", response_model=ExpenseOut)
+def create_expense(expense: ExpenseCreate, request: Request, db: Session = Depends(get_db)):
+    e = Expense(**expense.model_dump())
+    db.add(e)
+    db.commit()
+    db.refresh(e)
+    log_audit(db, "create", "expense", e.id, 0, f"Created expense: {e.title} - {e.amount}")
+    return e
+
+@app.put("/api/expenses/{expense_id}", response_model=ExpenseOut)
+def update_expense(expense_id: int, update: ExpenseUpdate, request: Request, db: Session = Depends(get_db)):
+    e = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(e, field, value)
+    db.commit()
+    db.refresh(e)
+    log_audit(db, "update", "expense", e.id, 0, f"Updated expense: {e.title}")
+    return e
+
+@app.delete("/api/expenses/{expense_id}")
+def delete_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+    e = db.query(Expense).filter(Expense.id == expense_id).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    title = e.title
+    db.delete(e)
+    db.commit()
+    log_audit(db, "delete", "expense", expense_id, 0, f"Deleted expense: {title}")
+    return {"ok": True}
+
+# ── Employee Expenses ───────────────────────────────────────────────────
+
+EMPLOYEE_EXPENSE_CATEGORIES = ["travel", "meals", "supplies", "accommodation", "other"]
+
+@app.get("/api/employee-expenses", response_model=List[EmployeeExpenseOut])
+def list_employee_expenses(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    category: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    q = db.query(EmployeeExpense)
+    if search:
+        q = q.filter(EmployeeExpense.employee_name.contains(search))
+    if status and status != "all":
+        q = q.filter(EmployeeExpense.status == status)
+    if category and category != "all":
+        q = q.filter(EmployeeExpense.category == category)
+    if start_date:
+        q = q.filter(EmployeeExpense.date >= start_date)
+    if end_date:
+        q = q.filter(EmployeeExpense.date <= end_date)
+    return q.order_by(EmployeeExpense.date.desc()).all()
+
+@app.post("/api/employee-expenses", response_model=EmployeeExpenseOut)
+def create_employee_expense(expense: EmployeeExpenseCreate, request: Request, db: Session = Depends(get_db)):
+    e = EmployeeExpense(**expense.model_dump())
+    db.add(e)
+    db.commit()
+    db.refresh(e)
+    log_audit(db, "create", "employee_expense", e.id, 0, f"Created employee expense: {e.employee_name} - {e.amount}")
+    return e
+
+@app.put("/api/employee-expenses/{expense_id}", response_model=EmployeeExpenseOut)
+def update_employee_expense(expense_id: int, update: EmployeeExpenseUpdate, request: Request, db: Session = Depends(get_db)):
+    e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Employee expense not found")
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(e, field, value)
+    db.commit()
+    db.refresh(e)
+    log_audit(db, "update", "employee_expense", e.id, 0, f"Updated employee expense: {e.employee_name}")
+    return e
+
+@app.delete("/api/employee-expenses/{expense_id}")
+def delete_employee_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+    e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Employee expense not found")
+    name = e.employee_name
+    db.delete(e)
+    db.commit()
+    log_audit(db, "delete", "employee_expense", expense_id, 0, f"Deleted employee expense: {name}")
+    return {"ok": True}
+
+@app.patch("/api/employee-expenses/{expense_id}/approve")
+def approve_employee_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+    e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Employee expense not found")
+    e.status = "approved"
+    db.commit()
+    db.refresh(e)
+    log_audit(db, "approve", "employee_expense", e.id, 0, f"Approved employee expense: {e.employee_name}")
+    return {"ok": True, "status": "approved"}
+
+@app.patch("/api/employee-expenses/{expense_id}/reject")
+def reject_employee_expense(expense_id: int, request: Request, db: Session = Depends(get_db)):
+    e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
+    if not e:
+        raise HTTPException(status_code=404, detail="Employee expense not found")
+    e.status = "rejected"
+    db.commit()
+    db.refresh(e)
+    log_audit(db, "reject", "employee_expense", e.id, 0, f"Rejected employee expense: {e.employee_name}")
+    return {"ok": True, "status": "rejected"}
 
 # ── Health ──────────────────────────────────────────────────────────────
 

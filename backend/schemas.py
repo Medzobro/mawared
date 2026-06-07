@@ -264,6 +264,60 @@ class PaginatedProducts(BaseModel):
     pages: int
     limit: int
 
+class ExpenseBase(BaseModel):
+    title: str
+    amount: float
+    category: str = "other"
+    date: str  # YYYY-MM-DD
+    description: str = ""
+    payment_method: str = "cash"
+
+class ExpenseCreate(ExpenseBase):
+    pass
+
+class ExpenseUpdate(BaseModel):
+    title: Optional[str] = None
+    amount: Optional[float] = None
+    category: Optional[str] = None
+    date: Optional[str] = None
+    description: Optional[str] = None
+    payment_method: Optional[str] = None
+
+class ExpenseOut(ExpenseBase):
+    id: int
+    created_by: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class EmployeeExpenseBase(BaseModel):
+    employee_name: str
+    amount: float
+    category: str = "other"
+    date: str  # YYYY-MM-DD
+    description: str = ""
+    status: str = "pending"
+
+class EmployeeExpenseCreate(EmployeeExpenseBase):
+    pass
+
+class EmployeeExpenseUpdate(BaseModel):
+    employee_name: Optional[str] = None
+    amount: Optional[float] = None
+    category: Optional[str] = None
+    date: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class EmployeeExpenseOut(EmployeeExpenseBase):
+    id: int
+    approved_by: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class DashboardData(BaseModel):
     kpis: DashboardKPIs
     weekly_sales: List[WeeklySalesItem]

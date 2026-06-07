@@ -139,4 +139,42 @@ export const settings = {
   update: (s: Partial<StoreSettings>) => req<StoreSettings>('/settings', { method: 'PUT', body: JSON.stringify(s) }),
 };
 
+// ─── Expenses ─────────────────────────────────────────────────────────
+
+export interface Expense {
+  id: number; title: string; amount: number; category: string;
+  date: string; description: string; payment_method: string;
+  created_by?: number; created_at: string;
+}
+
+export const expenses = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return req<Expense[]>(`/expenses${qs}`);
+  },
+  create: (e: Omit<Expense, 'id' | 'created_by' | 'created_at'>) => req<Expense>('/expenses', { method: 'POST', body: JSON.stringify(e) }),
+  update: (id: number, e: Partial<Expense>) => req<Expense>(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(e) }),
+  del: (id: number) => req<void>(`/expenses/${id}`, { method: 'DELETE' }),
+};
+
+// ─── Employee Expenses ────────────────────────────────────────────────
+
+export interface EmployeeExpense {
+  id: number; employee_name: string; amount: number; category: string;
+  date: string; description: string; status: string;
+  approved_by?: number; created_at: string;
+}
+
+export const employeeExpenses = {
+  list: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return req<EmployeeExpense[]>(`/employee-expenses${qs}`);
+  },
+  create: (e: Omit<EmployeeExpense, 'id' | 'approved_by' | 'created_at'>) => req<EmployeeExpense>('/employee-expenses', { method: 'POST', body: JSON.stringify(e) }),
+  update: (id: number, e: Partial<EmployeeExpense>) => req<EmployeeExpense>(`/employee-expenses/${id}`, { method: 'PUT', body: JSON.stringify(e) }),
+  del: (id: number) => req<void>(`/employee-expenses/${id}`, { method: 'DELETE' }),
+  approve: (id: number) => req<{ok: boolean; status: string}>(`/employee-expenses/${id}/approve`, { method: 'PATCH' }),
+  reject: (id: number) => req<{ok: boolean; status: string}>(`/employee-expenses/${id}/reject`, { method: 'PATCH' }),
+};
+
 export default req;

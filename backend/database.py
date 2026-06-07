@@ -103,6 +103,30 @@ class AuditLog(Base):
     ip_address = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class Expense(Base):
+    __tablename__ = "expenses"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    category = Column(String, default="other")
+    date = Column(String, nullable=False)  # YYYY-MM-DD
+    description = Column(Text, default="")
+    payment_method = Column(String, default="cash")  # cash, card, online
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class EmployeeExpense(Base):
+    __tablename__ = "employee_expenses"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_name = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    category = Column(String, default="other")
+    date = Column(String, nullable=False)  # YYYY-MM-DD
+    description = Column(Text, default="")
+    status = Column(String, default="pending")  # pending, approved, rejected
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 def get_db():
     """Dependency to get DB session."""
     db = SessionLocal()
