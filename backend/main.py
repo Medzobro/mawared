@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, date
@@ -175,11 +175,11 @@ def log_audit(db: Session, action: str, entity: str, entity_id: Optional[int], u
 # ── Auth endpoints ─────────────────────────────────────────────────────
 
 @app.post("/api/auth/register", response_model=Token)
-def register(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == req.username).first():
         raise HTTPException(status_code=400, detail="Username already registered")
 
-    # Default password is same as username for dev convenience
     user = User(
         username=req.username,
         name=req.username,
@@ -190,14 +190,17 @@ def register(req: LoginRequest, db: Session = Depends(get_db)):
     db.refresh(user)
 
     access_token = create_access_token(data={"sub": user.username})
+    log_audit(db, "register", "user", user.id, user.id, f"User registered: {req.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/auth/login", response_model=Token)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = create_access_token(data={"sub": user.username})
+    log_audit(db, "login", "user", user.id, user.id, f"User logged in: {req.username}")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/api/auth/me", response_model=UserOut)
@@ -514,10 +517,11 @@ def dashboard(db: Session = Depends(get_db)):
 # ── Import / Export ─────────────────────────────────────────────────────
 
 @app.post("/api/products/import")
-def import_products(file: bytes, request: Request, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def import_products(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Import products from CSV or JSON."""
     try:
-        content = file.decode('utf-8').strip()
+        content = file.file.read().decode('utf-8').strip()
         if content.startswith('[') or content.startswith('{'):
             data = json.loads(content)
         else:
@@ -526,17 +530,22 @@ def import_products(file: bytes, request: Request, db: Session = Depends(get_db)
         
         imported = 0
         for row in data:
+            row.pop('id', None)
+            row.pop('created_at', None)
             p = Product(**row)
             db.add(p)
             imported += 1
         db.commit()
-        log_audit(db, "import", "product", None, 0, f"Imported {imported} products")
+        log_audit(db, "import", "product", None, 0, f"Imported {imported} products from {file.filename}")
         return {"imported": imported}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
 
 @app.get("/api/products/export")
+@limiter.limit("30/minute")
 def export_products(
+    request: Request,
     format: str = "json",
     category: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -553,7 +562,13 @@ def export_products(
         writer.writerow(["id", "name", "sku", "barcode", "category", "price", "cost", "stock", "min_stock", "unit", "status", "supplier"])
         for p in products:
             writer.writerow([p.id, p.name, p.sku, p.barcode, p.category, p.price, p.cost, p.stock, p.min_stock, p.unit, p.status, p.supplier])
-        return {"content": output.getvalue(), "filename": "products.csv", "type": "text/csv"}
+        csv_data = output.getvalue().encode('utf-8')
+        log_audit(db, "export", "product", None, 0, f"Exported {len(products)} products as CSV")
+        return StreamingResponse(
+            io.BytesIO(csv_data),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=products.csv"}
+        )
     
     data = [{
         "id": p.id, "name": p.name, "sku": p.sku, "barcode": p.barcode,
@@ -561,7 +576,13 @@ def export_products(
         "stock": p.stock, "min_stock": p.min_stock, "unit": p.unit,
         "status": p.status, "supplier": p.supplier,
     } for p in products]
-    return {"content": json.dumps(data, ensure_ascii=False, indent=2), "filename": "products.json", "type": "application/json"}
+    json_data = json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')
+    log_audit(db, "export", "product", None, 0, f"Exported {len(products)} products as JSON")
+    return StreamingResponse(
+        io.BytesIO(json_data),
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=products.json"}
+    )
 
 # ── Audit Logs ─────────────────────────────────────────────────────────
 
