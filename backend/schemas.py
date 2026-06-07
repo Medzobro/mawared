@@ -244,6 +244,26 @@ class AlertItem(BaseModel):
     read: bool
     date: str
 
+class AuditLogOut(BaseModel):
+    id: int
+    action: str
+    entity: str
+    entity_id: Optional[int] = None
+    user_id: Optional[int] = None
+    details: str = ""
+    ip_address: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PaginatedProducts(BaseModel):
+    items: List[ProductOut]
+    total: int
+    page: int
+    pages: int
+    limit: int
+
 class DashboardData(BaseModel):
     kpis: DashboardKPIs
     weekly_sales: List[WeeklySalesItem]

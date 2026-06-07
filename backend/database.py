@@ -92,6 +92,17 @@ class StoreSettings(Base):
     currency_label = Column(String, default="أوقية")
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    action = Column(String, index=True)  # create, update, delete, login, export, etc.
+    entity = Column(String, index=True)  # product, category, transaction, etc.
+    entity_id = Column(Integer, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    details = Column(Text, default="")
+    ip_address = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 def get_db():
     """Dependency to get DB session."""
     db = SessionLocal()

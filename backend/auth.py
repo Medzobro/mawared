@@ -4,9 +4,11 @@ from datetime import datetime, timedelta
 from typing import Optional
 import os
 
-SECRET_KEY = os.environ.get("JWT_SECRET", "mawared-dev-secret-key-change-in-production")
+SECRET_KEY = os.environ.get("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable is required. Set it before starting the application.")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # 7 days default
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

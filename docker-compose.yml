@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-mawared-change-me-in-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///app/backend/mawared.db}
+      - ENV=${ENV:-production}
+    volumes:
+      - mawared_data:/app/backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mawared_data:

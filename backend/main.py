@@ -1,37 +1,53 @@
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, date
 import random
 import os
+import csv
+import io
+import json
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from database import engine, SessionLocal, get_db, init_db
-from database import User, Category, Product, Transaction, Alert, StoreSettings as DBStoreSettings
+from database import User, Category, Product, Transaction, Alert, StoreSettings as DBStoreSettings, AuditLog
 from schemas import (
     UserCreate, UserOut, LoginRequest, Token,
-    ProductCreate, ProductUpdate, ProductOut,
+    ProductCreate, ProductUpdate, ProductOut, PaginatedProducts,
     TransactionCreate, TransactionOut,
     AlertCreate, AlertOut,
     CategoryCreate, CategoryOut,
     StoreSettings,
     DashboardData, DashboardKPIs, WeeklySalesItem, CategoryDistributionItem,
-    RecentTransactionItem, AlertItem,
+    RecentTransactionItem, AlertItem, AuditLogOut,
 )
 from auth import hash_password, verify_password, create_access_token, decode_access_token
 
-app = FastAPI(title="MAWARED API", version="2.0.0")
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
-# CORS
-origins = ["*"]
+app = FastAPI(title="MAWARED API", version="2.0.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS - read from env with safe defaults for development
+raw_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173")
+origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+if os.environ.get("ENV") == "development" and not origins:
+    origins = ["http://localhost:3000", "http://localhost:5173"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
 # ── Static files (SPA) ────────────────────────────────────────────────
@@ -138,6 +154,24 @@ def get_current_user(token: str, db: Session):
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
+def get_current_admin(token: str, db: Session):
+    user = get_current_user(token, db)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+def log_audit(db: Session, action: str, entity: str, entity_id: Optional[int], user_id: int, details: str = ""):
+    """Log an audit entry."""
+    entry = AuditLog(
+        action=action,
+        entity=entity,
+        entity_id=entity_id,
+        user_id=user_id,
+        details=details,
+    )
+    db.add(entry)
+    db.commit()
+
 # ── Auth endpoints ─────────────────────────────────────────────────────
 
 @app.post("/api/auth/register", response_model=Token)
@@ -175,13 +209,13 @@ def me(token: Optional[str] = None, db: Session = Depends(get_db)):
 
 # ── Product CRUD ───────────────────────────────────────────────────────
 
-@app.get("/api/products", response_model=List[ProductOut])
+@app.get("/api/products", response_model=PaginatedProducts)
 def list_products(
     search: Optional[str] = None,
     category: Optional[str] = None,
     status: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 500,
+    page: int = 1,
+    limit: int = 50,
     db: Session = Depends(get_db)
 ):
     q = db.query(Product)
@@ -195,10 +229,22 @@ def list_products(
         q = q.filter(Product.category == category)
     if status and status != "all":
         q = q.filter(Product.status == status)
-    return q.offset(skip).limit(limit).all()
+    
+    total = q.count()
+    skip = (page - 1) * limit
+    items = q.offset(skip).limit(limit).all()
+    pages = (total + limit - 1) // limit
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pages": pages,
+        "limit": limit,
+    }
 
 @app.post("/api/products", response_model=ProductOut)
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+def create_product(product: ProductCreate, request: Request, db: Session = Depends(get_db)):
     if db.query(Product).filter((Product.sku == product.sku) | (Product.barcode == product.barcode)).first():
         raise HTTPException(status_code=400, detail="SKU or Barcode already exists")
     p = Product(**product.model_dump())
@@ -207,10 +253,11 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.refresh(p)
     _sync_category_counts(db)
     _sync_alerts(db)
+    log_audit(db, "create", "product", p.id, 0, f"Created product: {p.name}")
     return p
 
 @app.put("/api/products/{product_id}", response_model=ProductOut)
-def update_product(product_id: int, update: ProductUpdate, db: Session = Depends(get_db)):
+def update_product(product_id: int, update: ProductUpdate, request: Request, db: Session = Depends(get_db)):
     p = db.query(Product).filter(Product.id == product_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -220,16 +267,19 @@ def update_product(product_id: int, update: ProductUpdate, db: Session = Depends
     db.refresh(p)
     _sync_category_counts(db)
     _sync_alerts(db)
+    log_audit(db, "update", "product", p.id, 0, f"Updated product: {p.name}")
     return p
 
 @app.delete("/api/products/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+def delete_product(product_id: int, request: Request, db: Session = Depends(get_db)):
     p = db.query(Product).filter(Product.id == product_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Product not found")
+    name = p.name
     db.delete(p)
     db.commit()
     _sync_category_counts(db)
+    log_audit(db, "delete", "product", product_id, 0, f"Deleted product: {name}")
     return {"ok": True}
 
 # Sync category counts
@@ -461,11 +511,80 @@ def dashboard(db: Session = Depends(get_db)):
         alerts=alert_list,
     )
 
+# ── Import / Export ─────────────────────────────────────────────────────
+
+@app.post("/api/products/import")
+def import_products(file: bytes, request: Request, db: Session = Depends(get_db)):
+    """Import products from CSV or JSON."""
+    try:
+        content = file.decode('utf-8').strip()
+        if content.startswith('[') or content.startswith('{'):
+            data = json.loads(content)
+        else:
+            reader = csv.DictReader(io.StringIO(content))
+            data = list(reader)
+        
+        imported = 0
+        for row in data:
+            p = Product(**row)
+            db.add(p)
+            imported += 1
+        db.commit()
+        log_audit(db, "import", "product", None, 0, f"Imported {imported} products")
+        return {"imported": imported}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
+
+@app.get("/api/products/export")
+def export_products(
+    format: str = "json",
+    category: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Export products to CSV or JSON."""
+    q = db.query(Product)
+    if category and category != "all":
+        q = q.filter(Product.category == category)
+    products = q.all()
+    
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["id", "name", "sku", "barcode", "category", "price", "cost", "stock", "min_stock", "unit", "status", "supplier"])
+        for p in products:
+            writer.writerow([p.id, p.name, p.sku, p.barcode, p.category, p.price, p.cost, p.stock, p.min_stock, p.unit, p.status, p.supplier])
+        return {"content": output.getvalue(), "filename": "products.csv", "type": "text/csv"}
+    
+    data = [{
+        "id": p.id, "name": p.name, "sku": p.sku, "barcode": p.barcode,
+        "category": p.category, "price": p.price, "cost": p.cost,
+        "stock": p.stock, "min_stock": p.min_stock, "unit": p.unit,
+        "status": p.status, "supplier": p.supplier,
+    } for p in products]
+    return {"content": json.dumps(data, ensure_ascii=False, indent=2), "filename": "products.json", "type": "application/json"}
+
+# ── Audit Logs ─────────────────────────────────────────────────────────
+
+@app.get("/api/audit-logs", response_model=List[AuditLogOut])
+def list_audit_logs(
+    limit: int = 100,
+    offset: int = 0,
+    action: Optional[str] = None,
+    entity: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    q = db.query(AuditLog)
+    if action:
+        q = q.filter(AuditLog.action == action)
+    if entity:
+        q = q.filter(AuditLog.entity == entity)
+    return q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
+
 # ── Health ──────────────────────────────────────────────────────────────
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.utcnow().isoformat(), "version": "2.0.0"}
 
 # ── SPA static files ────────────────────────────────────────────────────
 

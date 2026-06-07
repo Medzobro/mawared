@@ -6,3 +6,4 @@ python-jose[cryptography]==3.3.0
 pydantic==2.7.4
 pydantic-settings==2.3.4
 python-multipart==0.0.9
+slowapi==0.1.9
