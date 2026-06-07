@@ -297,7 +297,6 @@ class EmployeeExpenseBase(BaseModel):
     category: str = "other"
     date: str  # YYYY-MM-DD
     description: str = ""
-    status: str = "pending"
 
 class EmployeeExpenseCreate(EmployeeExpenseBase):
     pass
@@ -308,10 +307,11 @@ class EmployeeExpenseUpdate(BaseModel):
     category: Optional[str] = None
     date: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[str] = None
 
 class EmployeeExpenseOut(EmployeeExpenseBase):
     id: int
+    status: str = "pending"
+    created_by: Optional[int] = None
     approved_by: Optional[int] = None
     created_at: datetime
 

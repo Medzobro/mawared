@@ -392,14 +392,16 @@ export function EmployeeExpenses() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('employee_expenses.status')}</label>
-                    <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-premium w-full">
-                      <option value="pending">{t('employee_expenses.pending')}</option>
-                      <option value="approved">{t('employee_expenses.approved')}</option>
-                      <option value="rejected">{t('employee_expenses.rejected')}</option>
-                    </select>
-                  </div>
+                  {editing && (
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('employee_expenses.status')}</label>
+                      <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-premium w-full">
+                        <option value="pending">{t('employee_expenses.pending')}</option>
+                        <option value="approved">{t('employee_expenses.approved')}</option>
+                        <option value="rejected">{t('employee_expenses.rejected')}</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{t('employee_expenses.description')}</label>

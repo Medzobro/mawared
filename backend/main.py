@@ -615,7 +615,7 @@ def list_audit_logs(
         q = q.filter(AuditLog.entity == entity)
     return q.order_by(AuditLog.created_at.desc()).offset(offset).limit(limit).all()
 
-def _get_token(auth: str | None) -> str | None:
+def _get_token(auth: Optional[str]) -> Optional[str]:
     if not auth:
         return None
     scheme, _, token = auth.partition(" ")
@@ -753,7 +753,7 @@ def create_employee_expense(
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
     user = get_current_user(token, db)
-    e = EmployeeExpense(**expense.model_dump())
+    e = EmployeeExpense(**expense.model_dump(), status="pending", created_by=user.id)
     db.add(e)
     db.commit()
     db.refresh(e)
@@ -775,7 +775,11 @@ def update_employee_expense(
     e = db.query(EmployeeExpense).filter(EmployeeExpense.id == expense_id).first()
     if not e:
         raise HTTPException(status_code=404, detail="Employee expense not found")
-    for field, value in update.model_dump(exclude_unset=True).items():
+    update_data = update.model_dump(exclude_unset=True)
+    # Only admins can change status via PUT; regular users get 403
+    if "status" in update_data and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required to change status")
+    for field, value in update_data.items():
         setattr(e, field, value)
     db.commit()
     db.refresh(e)

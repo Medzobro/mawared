@@ -187,7 +187,7 @@ export function Expenses() {
             <div className="p-2.5 rounded-xl bg-emerald-500/10"><DollarSign className="w-5 h-5 text-emerald-500" /></div>
             <div>
               <div className="text-xs text-[var(--text-muted)]">{t('expenses.amount')}</div>
-              <div className="text-xl font-bold text-[var(--text-primary)]">{items.length ? fmtNum(Number((total / items.length).toFixed(2))) : '0'}</div>
+              <div className="text-xl font-bold text-[var(--text-primary)]">{items.length ? (total / items.length).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0'}</div>
             </div>
           </div>
         </motion.div>

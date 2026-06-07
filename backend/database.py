@@ -124,6 +124,7 @@ class EmployeeExpense(Base):
     date = Column(String, nullable=False)  # YYYY-MM-DD
     description = Column(Text, default="")
     status = Column(String, default="pending")  # pending, approved, rejected
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
