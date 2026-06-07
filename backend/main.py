@@ -520,6 +520,8 @@ def dashboard(db: Session = Depends(get_db)):
 @limiter.limit("30/minute")
 def import_products(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Import products from CSV or JSON."""
+    if file.content_type not in ("text/csv", "application/json", "text/plain"):
+        raise HTTPException(status_code=400, detail="Only CSV and JSON files are supported")
     try:
         content = file.file.read().decode('utf-8').strip()
         if content.startswith('[') or content.startswith('{'):
@@ -550,6 +552,8 @@ def export_products(
     category: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    if format not in ("json", "csv"):
+        raise HTTPException(status_code=400, detail="Format must be 'json' or 'csv'")
     """Export products to CSV or JSON."""
     q = db.query(Product)
     if category and category != "all":
@@ -587,13 +591,21 @@ def export_products(
 # ── Audit Logs ─────────────────────────────────────────────────────────
 
 @app.get("/api/audit-logs", response_model=List[AuditLogOut])
+@limiter.limit("60/minute")
 def list_audit_logs(
+    request: Request,
     limit: int = 100,
     offset: int = 0,
     action: Optional[str] = None,
     entity: Optional[str] = None,
+    token: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    user = get_current_user(token, db)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
     q = db.query(AuditLog)
     if action:
         q = q.filter(AuditLog.action == action)

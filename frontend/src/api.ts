@@ -62,10 +62,18 @@ export interface Product {
   created_at: string;
 }
 
+export interface PaginatedProducts {
+  items: Product[];
+  total: number;
+  page: number;
+  pages: number;
+  limit: number;
+}
+
 export const products = {
   list: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-    return req<Product[]>(`/products${qs}`);
+    return req<PaginatedProducts>(`/products${qs}`);
   },
   create: (p: Omit<Product, 'id' | 'created_at'>) => req<Product>('/products', { method: 'POST', body: JSON.stringify(p) }),
   update: (id: number, p: Partial<Product>) => req<Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(p) }),

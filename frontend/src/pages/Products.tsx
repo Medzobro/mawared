@@ -24,6 +24,8 @@ export function Products() {
   const curr = t('currency.symbol') || 'MRU';
 
   const [products, setProducts] = useState<api.Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -39,8 +41,10 @@ export function Products() {
 
   const load = async () => {
     setLoading(true);
-    const [ps, cs] = await Promise.all([api.products.list(), api.categories.list()]);
-    setProducts(ps);
+    const [ps, cs] = await Promise.all([api.products.list({page: String(currentPage), limit: String(itemsPerPage)}), api.categories.list()]);
+    setProducts(ps.items || []);
+    setTotalProducts(ps.total || 0);
+    setTotalPages(ps.pages || 1);
     setCategories(cs);
     setLoading(false);
   };
@@ -63,8 +67,9 @@ export function Products() {
     return d;
   }, [products, search, selectedCategory, selectedStatus, sortKey, sortDir]);
 
-  const pages = Math.ceil(filtered.length / itemsPerPage) || 1;
-  const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  // Server-side pagination: pageItems is already paginated from API
+  const pageItems = products;
+  const pages = totalPages;
 
   const handleSort = (k: string) => {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
