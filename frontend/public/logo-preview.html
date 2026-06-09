@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAWARED Logo</title>
+  <style>
+    body {
+      background: #0a0a0f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .logo-container {
+      text-align: center;
+    }
+    .logo-svg {
+      width: 256px;
+      height: 256px;
+      filter: drop-shadow(0 0 30px rgba(34,211,238,0.3));
+    }
+    .brand-name {
+      color: #22d3ee;
+      font-size: 48px;
+      font-weight: 800;
+      margin-top: 24px;
+      letter-spacing: 2px;
+    }
+    .brand-sub {
+      color: #22d3ee;
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 8px;
+      letter-spacing: 8px;
+      opacity: 0.8;
+    }
+    .tagline {
+      color: #5eead4;
+      font-size: 16px;
+      margin-top: 16px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <svg class="logo-svg" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1024" height="1024" fill="#0d4a42" rx="224" ry="224"/>
+      <rect x="6" y="6" width="1012" height="1012" rx="218" ry="218" fill="none" stroke="#22d3ee" stroke-width="12" opacity="0.3"/>
+      <rect x="18" y="18" width="988" height="988" rx="206" ry="206" fill="none" stroke="#22d3ee" stroke-width="6" opacity="0.6"/>
+      
+      <polygon points="340,360 512,315 684,360 684,410 512,380 340,410" fill="none" stroke="#22d3ee" stroke-width="18" stroke-linejoin="round"/>
+      
+      <path d="M340 410 Q365 450,390 410 Q415 450,440 410 Q465 450,490 410 Q515 450,540 410 Q565 450,590 410 Q615 450,640 410 Q665 450,690 410" fill="none" stroke="#22d3ee" stroke-width="18" stroke-linecap="round"/>
+      
+      <rect x="340" y="410" width="344" height="220" rx="24" ry="24" fill="none" stroke="#22d3ee" stroke-width="18"/>
+      
+      <path d="M472 630 L472 570 Q472 530,512 530 Q552 530,552 570 L552 630" fill="none" stroke="#22d3ee" stroke-width="18" stroke-linecap="round"/>
+      
+      <g transform="translate(640, 480)" stroke="#22d3ee" stroke-width="14" stroke-linecap="round">
+        <line x1="0" y1="-22" x2="0" y2="22"/>
+        <line x1="-22" y1="0" x2="22" y2="0"/>
+      </g>
+      
+      <rect x="370" y="460" width="80" height="80" rx="14" ry="14" fill="none" stroke="#22d3ee" stroke-width="14"/>
+      <line x1="410" y1="460" x2="410" y2="540" stroke="#22d3ee" stroke-width="6"/>
+      <line x1="370" y1="500" x2="450" y2="500" stroke="#22d3ee" stroke-width="6"/>
+      
+      <text x="512" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="90" font-weight="900" fill="#22d3ee" text-anchor="middle" letter-spacing="4">مورد</text>
+      <text x="512" y="820" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#22d3ee" text-anchor="middle" letter-spacing="12" opacity="0.85">MAWARED</text>
+      
+      <circle cx="472" cy="860" r="7" fill="#22d3ee" opacity="0.5"/>
+      <circle cx="512" cy="860" r="7" fill="#22d3ee" opacity="0.85"/>
+      <circle cx="552" cy="860" r="7" fill="#22d3ee" opacity="0.5"/>
+    </svg>
+    
+    <div class="brand-name">مورد | MAWARED</div>
+    <div class="tagline">نظام إدارة المحلات والصيدليات الذكي</div>
+  </div>
+</body>
+</html>

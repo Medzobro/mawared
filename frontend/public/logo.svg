@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#0a0a0f"/>
+  
+  <!-- Squircle container -->
+  <rect x="162" y="162" width="700" height="700" rx="175" ry="175" fill="#0d4a42" stroke="#22d3ee" stroke-width="6"/>
+  
+  <!-- Subtle glow effect -->
+  <rect x="162" y="162" width="700" height="700" rx="175" ry="175" fill="none" stroke="#22d3ee" stroke-width="12" opacity="0.15"/>
+  <rect x="162" y="162" width="700" height="700" rx="175" ry="175" fill="none" stroke="#22d3ee" stroke-width="24" opacity="0.08"/>
+  
+  <!-- Shop Awning (trapezoid shape) -->
+  <polygon points="320,350 512,300 704,350 704,400 512,370 320,400" fill="none" stroke="#22d3ee" stroke-width="14" stroke-linejoin="round"/>
+  
+  <!-- Scalloped edge (4 humps) -->
+  <path d="
+    M 320 400
+    Q 341 430, 362 400
+    Q 383 430, 404 400
+    Q 425 430, 446 400
+    Q 467 430, 488 400
+    Q 509 430, 530 400
+    Q 551 430, 572 400
+    Q 593 430, 614 400
+    Q 635 430, 656 400
+    Q 677 430, 698 400
+    L 704 400
+  " fill="none" stroke="#22d3ee" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Shop body -->
+  <rect x="320" y="400" width="384" height="240" rx="20" ry="20" fill="none" stroke="#22d3ee" stroke-width="14"/>
+  
+  <!-- Doorway (arched) -->
+  <path d="M 470 640 L 470 580 Q 470 540, 512 540 Q 554 540, 554 580 L 554 640" fill="none" stroke="#22d3ee" stroke-width="14" stroke-linecap="round"/>
+  
+  <!-- Pharmacy cross (small, integrated on the right side) -->
+  <g transform="translate(620, 460)" stroke="#22d3ee" stroke-width="10" stroke-linecap="round">
+    <line x1="0" y1="-20" x2="0" y2="20"/>
+    <line x1="-20" y1="0" x2="20" y2="0"/>
+  </g>
+  
+  <!-- Window on left -->
+  <rect x="355" y="450" width="80" height="80" rx="12" ry="12" fill="none" stroke="#22d3ee" stroke-width="12"/>
+  <!-- Accent lines on window for depth -->
+  <line x1="395" y1="450" x2="395" y2="530" stroke="#22d3ee" stroke-width="5"/>
+  <line x1="355" y1="490" x2="435" y2="490" stroke="#22d3ee" stroke-width="5"/>
+  
+  <!-- Arabic text "مورد" -->
+  <text x="512" y="740" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="800" fill="#22d3ee" text-anchor="middle" letter-spacing="2">مورد</text>
+  
+  <!-- English text "MAWARED" -->
+  <text x="512" y="800" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#22d3ee" text-anchor="middle" letter-spacing="8" opacity="0.8">MAWARED</text>
+  
+  <!-- Decorative dots below -->
+  <circle cx="472" cy="840" r="6" fill="#22d3ee" opacity="0.6"/>
+  <circle cx="512" cy="840" r="6" fill="#22d3ee" opacity="0.9"/>
+  <circle cx="552" cy="840" r="6" fill="#22d3ee" opacity="0.6"/>
+</svg>
