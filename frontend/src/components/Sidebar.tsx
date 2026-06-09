@@ -49,7 +49,8 @@ export function Sidebar() {
 
   const isActive = (path: string) => {
     if (path === '/dashboard') return currentPath === '/dashboard' || currentPath === '/';
-    return currentPath === path || currentPath.startsWith(path + '/');
+    if (path === '/pos') return currentPath === '/pos';
+    return currentPath === path;
   };
 
   const accent = mode === 'pharmacy'

@@ -1,6 +1,7 @@
 export interface Translations {
   sidebar: {
     dashboard: string;
+    pos: string;
     products: string;
     transactions: string;
     suppliers: string;

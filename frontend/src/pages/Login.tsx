@@ -344,6 +344,8 @@ export function Login() {
           <motion.form
             key={tab}
             onSubmit={handleSubmit}
+            method="post"
+            autoComplete="off"
             initial={{ opacity: 0, x: tab === 'login' ? -20 : 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}

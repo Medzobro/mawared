@@ -4,6 +4,7 @@ export const fr: { translation: Translations } = {
   translation: {
     sidebar: {
       dashboard: 'Tableau de bord',
+      pos: 'Point de vente',
       products: 'Produits',
       transactions: 'Transactions',
       suppliers: 'Fournisseurs',

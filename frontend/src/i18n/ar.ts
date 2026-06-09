@@ -4,6 +4,7 @@ export const ar: { translation: Translations } = {
   translation: {
     sidebar: {
       dashboard: 'لوحة التحكم',
+      pos: 'نقطة البيع',
       products: 'المنتجات',
       transactions: 'الحركات',
       suppliers: 'الموردون',
