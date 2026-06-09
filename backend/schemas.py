@@ -52,6 +52,27 @@ class AlertSeverity(str, Enum):
     medium = "medium"
     high = "high"
 
+class EmployeeRole(str, Enum):
+    admin = "admin"
+    manager = "manager"
+    cashier = "cashier"
+    pharmacist = "pharmacist"
+
+class EmployeeStatus(str, Enum):
+    active = "active"
+    inactive = "inactive"
+
+class ExpenseCategory(str, Enum):
+    general = "general"
+    rent = "rent"
+    utilities = "utilities"
+    salaries = "salaries"
+    inventory = "inventory"
+    marketing = "marketing"
+    maintenance = "maintenance"
+    transport = "transport"
+    other = "other"
+
 # ─── User Schemas ─────────────────────────────────────────────
 
 class UserBase(BaseModel):
@@ -77,6 +98,11 @@ class Token(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+class AccountTypeRequest(BaseModel):
+    username: str
+    password: str
+    account_type: str = "shop"
 
 # ─── Category Schemas ────────────────────────────────────────
 
@@ -147,7 +173,7 @@ class TransactionBase(BaseModel):
     amount: float
     item_count: int = 1
     customer: Optional[str] = None
-    items: str = ""  # comma-separated product IDs
+    items: str = ""
     payment_method: PaymentMethod = PaymentMethod.cash
     status: TransactionStatus = TransactionStatus.completed
 
@@ -183,22 +209,202 @@ class AlertOut(AlertBase):
     class Config:
         from_attributes = True
 
-# ─── Settings Schemas ──────────────────────────────────────
+# ─── Store Settings Schemas ──────────────────────────────────────
 
 class StoreSettings(BaseModel):
     store_name: str = "مورد - MAWARED"
     store_address: str = "نواكشوط، موريتانيا"
     store_phone: str = "+222 45 00 00 00"
+    store_email: str = ""
+    store_tax_id: str = ""
+    store_logo: Optional[str] = None
     email_notifications: bool = True
     push_notifications: bool = True
     sms_notifications: bool = False
     low_stock_alert: bool = True
     expiry_alert: bool = True
     daily_report: bool = False
+    low_stock_threshold: int = 10
+    expiry_alert_days: int = 30
+    tax_rate: float = 0.0
+    receipt_header: str = ""
+    receipt_footer: str = "شكراً لتعاملكم معنا"
+    receipt_width: int = 80
+    auto_print: bool = False
     theme: Theme = Theme.system
     language: Language = Language.ar
     currency_symbol: str = "MRU"
     currency_label: str = "أوقية"
+    round_prices: bool = False
+    date_format: str = "DD/MM/YYYY"
+    price_display: str = "cost"
+
+# ─── Employee Schemas ────────────────────────────────────────
+
+class EmployeeBase(BaseModel):
+    name: str
+    phone: str = ""
+    email: str = ""
+    role: EmployeeRole = EmployeeRole.cashier
+    base_salary: float = 0.0
+    join_date: str = ""
+    status: EmployeeStatus = EmployeeStatus.active
+    id_card: str = ""
+    notes: str = ""
+
+class EmployeeCreate(EmployeeBase):
+    pass
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[EmployeeRole] = None
+    base_salary: Optional[float] = None
+    join_date: Optional[str] = None
+    status: Optional[EmployeeStatus] = None
+    id_card: Optional[str] = None
+    notes: Optional[str] = None
+
+class EmployeeOut(EmployeeBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ─── Salary Payment Schemas ──────────────────────────────────
+
+class SalaryPaymentBase(BaseModel):
+    employee_id: int
+    amount: float = 0.0
+    month: int = 1
+    year: int = 2026
+    bonus: float = 0.0
+    deductions: float = 0.0
+    net_salary: float = 0.0
+    payment_method: PaymentMethod = PaymentMethod.cash
+    status: str = "paid"
+    notes: str = ""
+
+class SalaryPaymentCreate(SalaryPaymentBase):
+    pass
+
+class SalaryPaymentUpdate(BaseModel):
+    amount: Optional[float] = None
+    bonus: Optional[float] = None
+    deductions: Optional[float] = None
+    net_salary: Optional[float] = None
+    payment_method: Optional[PaymentMethod] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+class SalaryPaymentOut(SalaryPaymentBase):
+    id: int
+    paid_date: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ─── Expense Schemas ────────────────────────────────────────
+
+class ExpenseBase(BaseModel):
+    category: str = "general"
+    description: str = ""
+    amount: float = 0.0
+    date: str = ""
+    payment_method: PaymentMethod = PaymentMethod.cash
+    receipt_image: Optional[str] = None
+    created_by: str = ""
+
+class ExpenseCreate(ExpenseBase):
+    pass
+
+class ExpenseUpdate(BaseModel):
+    category: Optional[str] = None
+    description: Optional[str] = None
+    amount: Optional[float] = None
+    date: Optional[str] = None
+    payment_method: Optional[PaymentMethod] = None
+    receipt_image: Optional[str] = None
+    created_by: Optional[str] = None
+
+class ExpenseOut(ExpenseBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ExpenseSummary(BaseModel):
+    total: float
+    count: int
+    by_category: List[dict]
+
+# ─── Supplier Schemas ───────────────────────────────────────
+
+class SupplierBase(BaseModel):
+    name: str
+    contact: str = ""
+    phone: str = ""
+    email: str = ""
+    address: str = ""
+    balance: float = 0.0
+    status: str = "active"
+    notes: str = ""
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = None
+    contact: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    balance: Optional[float] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+class SupplierOut(SupplierBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# ─── Customer Schemas ───────────────────────────────────────
+
+class CustomerBase(BaseModel):
+    name: str
+    phone: str = ""
+    email: str = ""
+    address: str = ""
+    credit_limit: float = 0.0
+    balance: float = 0.0
+    status: str = "active"
+    notes: str = ""
+
+class CustomerCreate(CustomerBase):
+    pass
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    credit_limit: Optional[float] = None
+    balance: Optional[float] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+class CustomerOut(CustomerBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # ─── Dashboard Schemas ─────────────────────────────────────
 
@@ -215,6 +421,10 @@ class DashboardKPIs(BaseModel):
     total_inventory_value_change: float
     expiring_soon: int
     expiring_soon_change: float
+    total_expenses: float
+    total_expenses_change: float
+    employee_count: int
+    employee_count_change: float
 
 class WeeklySalesItem(BaseModel):
     day: str
@@ -224,7 +434,7 @@ class WeeklySalesItem(BaseModel):
 class CategoryDistributionItem(BaseModel):
     name: str
     count: int
-    value: int  # percentage
+    value: int
     color: str
 
 class RecentTransactionItem(BaseModel):
@@ -244,80 +454,11 @@ class AlertItem(BaseModel):
     read: bool
     date: str
 
-class AuditLogOut(BaseModel):
+class ExpenseItem(BaseModel):
     id: int
-    action: str
-    entity: str
-    entity_id: Optional[int] = None
-    user_id: Optional[int] = None
-    details: str = ""
-    ip_address: Optional[str] = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class PaginatedProducts(BaseModel):
-    items: List[ProductOut]
-    total: int
-    page: int
-    pages: int
-    limit: int
-
-class ExpenseBase(BaseModel):
-    title: str
+    category: str
     amount: float
-    category: str = "other"
-    date: str  # YYYY-MM-DD
-    description: str = ""
-    payment_method: str = "cash"
-
-class ExpenseCreate(ExpenseBase):
-    pass
-
-class ExpenseUpdate(BaseModel):
-    title: Optional[str] = None
-    amount: Optional[float] = None
-    category: Optional[str] = None
-    date: Optional[str] = None
-    description: Optional[str] = None
-    payment_method: Optional[str] = None
-
-class ExpenseOut(ExpenseBase):
-    id: int
-    created_by: Optional[int] = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class EmployeeExpenseBase(BaseModel):
-    employee_name: str
-    amount: float
-    category: str = "other"
-    date: str  # YYYY-MM-DD
-    description: str = ""
-
-class EmployeeExpenseCreate(EmployeeExpenseBase):
-    pass
-
-class EmployeeExpenseUpdate(BaseModel):
-    employee_name: Optional[str] = None
-    amount: Optional[float] = None
-    category: Optional[str] = None
-    date: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-
-class EmployeeExpenseOut(EmployeeExpenseBase):
-    id: int
-    status: str = "pending"
-    created_by: Optional[int] = None
-    approved_by: Optional[int] = None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+    date: str
 
 class DashboardData(BaseModel):
     kpis: DashboardKPIs
@@ -325,3 +466,6 @@ class DashboardData(BaseModel):
     category_distribution: List[CategoryDistributionItem]
     transactions: List[RecentTransactionItem]
     alerts: List[AlertItem]
+    expenses: List[ExpenseItem]
+    total_expenses: float
+    employee_count: int

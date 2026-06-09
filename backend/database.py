@@ -115,6 +115,62 @@ class Expense(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class Employee(Base):
+    __tablename__ = "employees"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    phone = Column(String, default="")
+    email = Column(String, default="")
+    role = Column(String, default="cashier")
+    base_salary = Column(Float, default=0.0)
+    join_date = Column(String, default="")
+    status = Column(String, default="active")
+    id_card = Column(String, default="")
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class SalaryPayment(Base):
+    __tablename__ = "salary_payments"
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    amount = Column(Float, default=0.0)
+    month = Column(Integer, default=1)
+    year = Column(Integer, default=2026)
+    bonus = Column(Float, default=0.0)
+    deductions = Column(Float, default=0.0)
+    net_salary = Column(Float, default=0.0)
+    paid_date = Column(DateTime, default=datetime.utcnow)
+    payment_method = Column(String, default="cash")
+    status = Column(String, default="paid")
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    contact = Column(String, default="")
+    phone = Column(String, default="")
+    email = Column(String, default="")
+    address = Column(String, default="")
+    balance = Column(Float, default=0.0)
+    status = Column(String, default="active")
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Customer(Base):
+    __tablename__ = "customers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    phone = Column(String, default="")
+    email = Column(String, default="")
+    address = Column(String, default="")
+    credit_limit = Column(Float, default=0.0)
+    balance = Column(Float, default=0.0)
+    status = Column(String, default="active")
+    notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class EmployeeExpense(Base):
     __tablename__ = "employee_expenses"
     id = Column(Integer, primary_key=True, index=True)
