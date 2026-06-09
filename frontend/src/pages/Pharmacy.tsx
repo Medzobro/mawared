@@ -702,3 +702,4 @@ export function Pharmacy() {
     </div>
   );
 }
+export default Pharmacy;

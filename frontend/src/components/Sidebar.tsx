@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, Pill, QrCode, Settings,
-  ChevronRight, ChevronLeft, ShoppingBag,
+  ChevronRight, ChevronLeft, ShoppingBag, ShoppingCart,
   Receipt, Users, DollarSign, CreditCard, Briefcase, TrendingUp, Truck,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ import { useAppStore } from '../stores/appStore';
 /* Mode-aware menu + new ERP items */
 const SHOP_ITEMS = [
   { path: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
+  { path: '/pos', key: 'pos', icon: ShoppingCart },
   { path: '/products', key: 'products', icon: Package },
   { path: '/transactions', key: 'transactions', icon: Receipt },
   { path: '/suppliers', key: 'suppliers', icon: Truck },
@@ -25,6 +26,7 @@ const SHOP_ITEMS = [
 
 const PHARMACY_ITEMS = [
   { path: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
+  { path: '/pos', key: 'pos', icon: ShoppingCart },
   { path: '/pharmacy', key: 'pharmacy_mode', icon: Pill },
   { path: '/products', key: 'products', icon: Package },
   { path: '/transactions', key: 'transactions', icon: Receipt },

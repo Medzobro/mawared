@@ -882,3 +882,4 @@ function ScanTab() {
     </motion.div>
   );
 }
+export default QrPage;

@@ -5,18 +5,19 @@ import { Layout } from './components/Layout';
 import { useAppStore } from './stores/appStore';
 import { getLanguageDirection } from './i18n/i18n';
 
-const LoginPage       = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const DashboardPage   = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const ProductsPage    = lazy(() => import('./pages/Products').then(m => ({ default: m.Products })));
-const SettingsPage    = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
-const QrPage          = lazy(() => import('./pages/QrPage').then(m => ({ default: m.QrPage })));
-const PharmacyPage    = lazy(() => import('./pages/Pharmacy').then(m => ({ default: m.Pharmacy })));
-const TransactionsPage= lazy(() => import('./pages/Transactions').then(m => ({ default: m.Transactions })));
-const ExpensesPage    = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
-const EmployeesPage   = lazy(() => import('./pages/Employees').then(m => ({ default: m.Employees })));
-const SuppliersPage   = lazy(() => import('./pages/Suppliers').then(m => ({ default: m.Suppliers })));
-const CustomersPage   = lazy(() => import('./pages/Customers').then(m => ({ default: m.Customers })));
-const ReportsPage     = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const LoginPage       = lazy(() => import('./pages/Login'));
+const DashboardPage   = lazy(() => import('./pages/Dashboard'));
+const ProductsPage    = lazy(() => import('./pages/Products'));
+const SettingsPage    = lazy(() => import('./pages/Settings'));
+const QrPage          = lazy(() => import('./pages/QrPage'));
+const PharmacyPage    = lazy(() => import('./pages/Pharmacy'));
+const TransactionsPage= lazy(() => import('./pages/Transactions'));
+const ExpensesPage    = lazy(() => import('./pages/Expenses'));
+const EmployeesPage   = lazy(() => import('./pages/Employees'));
+const SuppliersPage   = lazy(() => import('./pages/Suppliers'));
+const CustomersPage   = lazy(() => import('./pages/Customers'));
+const ReportsPage     = lazy(() => import('./pages/Reports'));
+const POSPage         = lazy(() => import('./pages/POS'));
 
 function PageLoader() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/pos" element={<POSPage />} />
             <Route path="/qr" element={<QrPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

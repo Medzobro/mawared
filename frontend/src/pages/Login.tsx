@@ -242,10 +242,15 @@ export function Login() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.25), rgba(15,118,110,0.35))', border: '1px solid rgba(20,184,166,0.25)' }}
+              className="w-24 h-24 mb-3 rounded-2xl overflow-hidden border border-[var(--border-subtle)] shadow-lg"
+              style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(15,118,110,0.25))' }}
             >
-              <Store className="w-7 h-7 text-teal-400" />
+              <img
+                src="/logo-brand.jpg"
+                alt="MAWARED Logo"
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }}
+              />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
@@ -457,3 +462,4 @@ export function Login() {
     </div>
   );
 }
+export default Login;

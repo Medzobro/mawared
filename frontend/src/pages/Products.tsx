@@ -230,3 +230,4 @@ export function Products() {
     </div>
   );
 }
+export default Products;
