@@ -463,6 +463,29 @@ export interface Translations {
     completed: string;
     cancelled: string;
   };
+  pos: {
+    title: string;
+    subtitle: string;
+    items: string;
+    emptyCart: string;
+    cart: string;
+    searchPlaceholder: string;
+    subtotal: string;
+    discount: string;
+    tax: string;
+    total: string;
+    checkout: string;
+    paymentMethod: string;
+    cashReceived: string;
+    change: string;
+    confirm: string;
+    customerName: string;
+    customerPhone: string;
+    errorCheckout: string;
+    cash: string;
+    card: string;
+    both: string;
+  };
   currency: {
     label: string;
     symbol: string;
