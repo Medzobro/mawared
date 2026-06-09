@@ -16,6 +16,7 @@ export const en: { translation: Translations } = {
       qr_barcode: 'QR and Barcode',
       settings: 'Settings',
       shop: 'Shop',
+      shop_mode: 'Store Mode',
     },
     topbar: {
       search: 'Search products, transactions...',

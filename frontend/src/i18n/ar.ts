@@ -16,6 +16,7 @@ export const ar: { translation: Translations } = {
       qr_barcode: 'QR والباركود',
       settings: 'الإعدادات',
       shop: 'المحل التجاري',
+      shop_mode: 'وضع المحل',
     },
     topbar: {
       search: 'بحث في المنتجات، المعاملات...',

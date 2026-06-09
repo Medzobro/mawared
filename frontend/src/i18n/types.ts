@@ -13,6 +13,7 @@ export interface Translations {
     qr_barcode: string;
     settings: string;
     shop: string;
+    shop_mode: string;
   };
   topbar: {
     search: string;
