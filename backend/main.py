@@ -913,7 +913,7 @@ def reject_employee_expense(expense_id: int, db: Session = Depends(get_db)):
 if os.path.exists(static_path):
     app.mount("/assets", StaticFiles(directory=static_path), name="assets")
 
-for fname in ['sw.js', 'registerSW.js', 'manifest.webmanifest']:
+for fname in ['sw.js', 'registerSW.js', 'manifest.webmanifest', 'logo-brand.jpg', 'logo.svg']:
     fpath = os.path.join(dist_path, fname)
     if os.path.exists(fpath):
         @app.get(f"/{fname}")
